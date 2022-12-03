@@ -299,6 +299,75 @@ class Dal:
 
     def get_experiment_indicator_stats(self, run_id_list, indicator):
         """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
+        # sql = """SELECT eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
+        #          FROM dbo.experimentindicatorstats as eis
+        #          INNER JOIN dbo.experimentruns as er
+        #          ON eis.run_id = er.run_id
+        #          WHERE eis.run_id = %s AND eis.indicator = %s
+        #          ORDER BY eis.generation"""
+        sql = """SELECT eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
+                 FROM dbo.experimentindicatorstats as eis
+                 INNER JOIN dbo.experimentruns as er
+                 ON eis.run_id = er.run_id
+                 WHERE eis.run_id IN ({placeholders}) AND eis.indicator = %s
+                 ORDER BY eis.generation"""\
+                    .format(placeholders = ",".join(["%s"]*len(run_id_list)))
+        conn = None
+        res_dict = {"best":[], "worst":[], "average":[], "std":[], "median":[], "generation":[], "run_number":[]}
+
+        try:
+            # connect to the PostgreSQL database
+            conn = psycopg2.connect(**self.params)
+            cur = conn.cursor()
+            # for run_id in run_id_list:
+            # cur.execute(sql, (run_id, indicator))
+            cur.execute(sql, tuple(run_id_list + [indicator]))
+            for row in iter_row(cur, 1000):
+                for column_index, column in enumerate(res_dict.keys()):
+                    res_dict[column]+=[row[column_index]]
+
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+            raise error
+        finally:
+            if conn is not None:
+                conn.close()
+        return res_dict
+
+    def get_experiment_stats(self, run_id_list):
+        """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
+        sql = """SELECT eis.indicator, eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
+                 FROM dbo.experimentindicatorstats as eis
+                 INNER JOIN dbo.experimentruns as er
+                 ON eis.run_id = er.run_id
+                 WHERE eis.run_id IN ({placeholders})
+                 ORDER BY eis.generation"""\
+                    .format(placeholders = ",".join(["%s"]*len(run_id_list)))
+        conn = None
+        res_dict = {"indicator":[], "best":[], "worst":[], "average":[], "std":[], "median":[], "generation":[], "run_number":[]}
+
+        try:
+            # connect to the PostgreSQL database
+            conn = psycopg2.connect(**self.params)
+            cur = conn.cursor()
+            # for run_id in run_id_list:
+            cur.execute(sql, tuple(run_id_list))
+            for row in iter_row(cur, 1000):
+                for column_index, column in enumerate(res_dict.keys()):
+                    res_dict[column]+=[row[column_index]]
+
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+            raise error
+        finally:
+            if conn is not None:
+                conn.close()
+        return res_dict
+
+    def get_experiment_indicator_run_stats(self, run_id, indicator):
+        """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
         sql = """SELECT eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
                  FROM dbo.experimentindicatorstats as eis
                  INNER JOIN dbo.experimentruns as er
@@ -312,11 +381,10 @@ class Dal:
             # connect to the PostgreSQL database
             conn = psycopg2.connect(**self.params)
             cur = conn.cursor()
-            for run_id in run_id_list:
-                cur.execute(sql, (run_id, indicator))
-                for row in iter_row(cur, 1000):
-                    for column_index, column in enumerate(res_dict.keys()):
-                        res_dict[column]+=[row[column_index]]
+            cur.execute(sql, (run_id, indicator))
+            for row in iter_row(cur, 1000):
+                for column_index, column in enumerate(res_dict.keys()):
+                    res_dict[column]+=[row[column_index]]
 
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -327,4 +395,31 @@ class Dal:
                 conn.close()
         return res_dict
 
-    
+    def get_experiment_run_stats(self, run_id):
+        """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
+        sql = """SELECT eis.indicator, eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
+                 FROM dbo.experimentindicatorstats as eis
+                 INNER JOIN dbo.experimentruns as er
+                 ON eis.run_id = er.run_id
+                 WHERE eis.run_id = %s
+                 ORDER BY eis.generation"""
+        conn = None
+        res_dict = {"indicator":[], "best":[], "worst":[], "average":[], "std":[], "median":[], "generation":[], "run_number":[]}
+
+        try:
+            # connect to the PostgreSQL database
+            conn = psycopg2.connect(**self.params)
+            cur = conn.cursor()
+            cur.execute(sql, (run_id, ))
+            for row in iter_row(cur, 1000):
+                for column_index, column in enumerate(res_dict.keys()):
+                    res_dict[column]+=[row[column_index]]
+
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+            raise error
+        finally:
+            if conn is not None:
+                conn.close()
+        return res_dict
