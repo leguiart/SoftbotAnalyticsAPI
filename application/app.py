@@ -166,36 +166,6 @@ def BootstrappedIndicatorPlotRenderGET(experiment_name, indicator, statistic):
 
     return f'<img src="data:image/png;base64,{encode_image(img)}">'
 
-@app.route("/IndicatorPlotRunRender/experiment/<experiment_name>/indicator/<indicator>/run/<run_number>/statistic/<statistic>", methods = ["GET"])
-def PlotRunRenderGET(experiment_name, indicator, run_number, statistic):
-    experiment_obj = dal.get_experiment(experiment_name)
-    if not experiment_obj:
-        raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
-
-    experiment_run = dal.get_experiment_run(experiment_obj["experiment_id"], run_number)
-    if not experiment_run["run_id"]:
-        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
-    
-    run_id = experiment_run["run_id"]
-    experiment_stats = dal.get_experiment_indicator_run_stats(run_id, indicator)
-    if not experiment_stats["best"]:
-        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
-    df = pd.DataFrame(experiment_stats)
-    run_statistic = df[statistic].to_numpy()
-
-    fig, (ax) = plt.subplots(ncols=1, sharey=True)
-    tsplot(ax, run_statistic)
-    ax.set_ylabel(f"{indicator} {statistic}")
-    ax.set_xlabel("Generation")
-    ax.set_title(f"{indicator} {statistic} for {experiment_name} experiment, run {run_number}")
-    fig.canvas.draw()
-    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    img = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
-
-    return f'<img src="data:image/png;base64,{encode_image(img)}">'
-
-
 @app.route("/BootstrappedIndicatorPlot/experiment/<experiment_name>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
 def BootstrappedIndicatorPlotGET(experiment_name, indicator, statistic):
     experiment_obj = dal.get_experiment(experiment_name)
@@ -243,6 +213,35 @@ def BootstrappedIndicatorPlotGET(experiment_name, indicator, statistic):
             'format': img.format,
             'img': encode_image(img)
         })
+
+@app.route("/IndicatorPlotRunRender/experiment/<experiment_name>/indicator/<indicator>/run/<run_number>/statistic/<statistic>", methods = ["GET"])
+def IndicatorPlotRunRenderGET(experiment_name, indicator, run_number, statistic):
+    experiment_obj = dal.get_experiment(experiment_name)
+    if not experiment_obj:
+        raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+
+    experiment_run = dal.get_experiment_run(experiment_obj["experiment_id"], run_number)
+    if not experiment_run["run_id"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+    
+    run_id = experiment_run["run_id"]
+    experiment_stats = dal.get_experiment_indicator_run_stats(run_id, indicator)
+    if not experiment_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+    df = pd.DataFrame(experiment_stats)
+    run_statistic = df[statistic].to_numpy()
+
+    fig, (ax) = plt.subplots(ncols=1, sharey=True)
+    tsplot(ax, run_statistic)
+    ax.set_ylabel(f"{indicator} {statistic}")
+    ax.set_xlabel("Generation")
+    ax.set_title(f"{indicator} {statistic} for {experiment_name} experiment, run {run_number}")
+    fig.canvas.draw()
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    img = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+
+    return f'<img src="data:image/png;base64,{encode_image(img)}">'
 
 @app.route("/BootstrappedAllPlotRender/experiment/<experiment_name>/statistic/<statistic>", methods = ["GET"])
 def BootstrappedAllPlotRenderGET(experiment_name, statistic):
