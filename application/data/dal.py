@@ -185,18 +185,48 @@ class Dal:
 
         return updated_rows
 
-    def get_archives(self, run_id):
+    def get_archives(self, run_ids):
         """ query archives row from the dbo.experimentarchives table """
-        sql = "SELECT run_id, generation, archives, archives_json FROM dbo.experimentarchives WHERE run_id = %s"
+        sql = "SELECT run_id, generation, archives, archives_json FROM dbo.experimentarchives WHERE run_id IN ({placeholders})"\
+            .format(placeholders = ','.join(["%s"]*len(run_ids)))
         conn = None
-        archives = None
+        archives = {"run_id" : [], "generation" : [], "archives" : [],  "archives_json" : []} 
         try:
             conn = psycopg2.connect(**self.params)
             cur = conn.cursor()
-            cur.execute(sql, (run_id,))
-            row = cur.fetchone()
+            cur.execute(sql, tuple(run_ids))
+            rows = cur.fetchall()
             if cur.rowcount > 0:
-                archives = {"run_id" : row[0], "generation" : row[1], "archives" : pickle.loads(row[2]),  "archives_json" : row[3]} 
+                for row in rows:
+                    archives["run_id"]+=[row[0]]
+                    archives["generation"]+=[row[1]] 
+                    archives["archives"]+=[pickle.loads(row[2])]  
+                    archives["archives_json"]+=[row[3]] 
+
+            cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
+            raise error
+        finally:
+            if conn is not None:
+                conn.close()
+        return archives
+
+    def get_archives_json(self, run_ids):
+        """ query archives row from the dbo.experimentarchives table """
+        sql = "SELECT run_id, generation, archives_json FROM dbo.experimentarchives WHERE run_id IN ({placeholders})"\
+            .format(placeholders = ','.join(["%s"]*len(run_ids)))
+        conn = None
+        archives = {"run_id" : [], "generation" : [], "archives_json" : []} 
+        try:
+            conn = psycopg2.connect(**self.params)
+            cur = conn.cursor()
+            cur.execute(sql, tuple(run_ids))
+            rows = cur.fetchall()
+            if cur.rowcount > 0:
+                for row in rows:
+                    for column_index, column in enumerate(archives.keys()):
+                        archives[column]+=[row[column_index]]
 
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
@@ -299,12 +329,7 @@ class Dal:
 
     def get_experiment_indicator_stats(self, run_id_list, indicator):
         """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
-        # sql = """SELECT eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
-        #          FROM dbo.experimentindicatorstats as eis
-        #          INNER JOIN dbo.experimentruns as er
-        #          ON eis.run_id = er.run_id
-        #          WHERE eis.run_id = %s AND eis.indicator = %s
-        #          ORDER BY eis.generation"""
+        
         sql = """SELECT eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
                  FROM dbo.experimentindicatorstats as eis
                  INNER JOIN dbo.experimentruns as er
@@ -319,8 +344,6 @@ class Dal:
             # connect to the PostgreSQL database
             conn = psycopg2.connect(**self.params)
             cur = conn.cursor()
-            # for run_id in run_id_list:
-            # cur.execute(sql, (run_id, indicator))
             cur.execute(sql, tuple(run_id_list + [indicator]))
             for row in iter_row(cur, 1000):
                 for column_index, column in enumerate(res_dict.keys()):
@@ -337,7 +360,7 @@ class Dal:
 
     def get_experiment_stats(self, run_id_list):
         """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
-        sql = """SELECT eis.indicator, eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
+        sql = """SELECT eis.indicator, eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number
                  FROM dbo.experimentindicatorstats as eis
                  INNER JOIN dbo.experimentruns as er
                  ON eis.run_id = er.run_id
