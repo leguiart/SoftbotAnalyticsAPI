@@ -444,7 +444,6 @@ def ArchivesPlotRenderGET(archive, indicator, statistic):
             flattened_feat_map = np.std(experiment_archives[experiment_name], axis = 0)
         elif statistic == "median":
             flattened_feat_map = np.median(experiment_archives[experiment_name], axis = 0)
-        print(flattened_feat_map.shape)
 
         parameters = experiment_parameters[experiment_name]
         total_voxels = 1
@@ -456,10 +455,6 @@ def ArchivesPlotRenderGET(archive, indicator, statistic):
         elif archive[:5] == "an_me":
             x_points = parameters["an_me_evaluator"]["bpd"][0]
             y_points = parameters["an_me_evaluator"]["bpd"][1]
-        
-        print(total_voxels)
-        print(x_points)
-        print(y_points)
 
         feats = [list(np.linspace(0, total_voxels, x_points)), list(np.linspace(0, total_voxels, y_points))]
         bc_space = []
