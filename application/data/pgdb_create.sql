@@ -91,6 +91,56 @@ CREATE TABLE IF NOT EXISTS dbo.experimentIndicatorStats(
 		REFERENCES dbo.experimentRuns(run_id)
 );
 
+CREATE TABLE dbo.experimentcppns(
+	experiment_id UUID NOT NULL,
+	run_id UUID NOT NULL,
+	md5 VARCHAR(32) NOT NULL,
+	cppn_outputs bytea,
+	FOREIGN KEY (experiment_id)
+		REFERENCES dbo.experiments (experiment_id),
+	FOREIGN KEY (run_id)
+		REFERENCES dbo.experimentRuns(run_id),
+	PRIMARY KEY (experiment_id, run_id, md5)
+);
+
+
+/*DELETE FROM dbo.experimentruns
+WHERE run_id IN (
+SELECT er.run_id
+FROM dbo.experiments as ex
+INNER JOIN dbo.experimentruns as er
+ON er.experiment_id = ex.experiment_id
+WHERE ex.experiment_name IN ('QN', 'ME'));*/
+
+/*DELETE FROM dbo.experiments
+WHERE experiment_name IN ('QN', 'ME');*/
+/*
+DELETE FROM dbo.experimentindicatorstats
+WHERE run_id IN
+(SELECT run_id 
+FROM dbo.experimentruns 
+WHERE run_number IN (9, 11) 
+AND experiment_id IN 
+ (SELECT experiment_id FROM dbo.experiments WHERE experiment_name = 'SO'));
+
+
+SELECT ex.experiment_name, er.run_number, ic.indicator_count
+FROM dbo.experiments as ex
+INNER JOIN dbo.experimentruns as er
+ON ex.experiment_id = er.experiment_id
+INNER JOIN (SELECT ei.run_id as run_id, COUNT(*) as indicator_count
+FROM dbo.experiments as ex
+INNER JOIN dbo.experimentruns as er
+ON ex.experiment_id = er.experiment_id
+INNER JOIN dbo.experimentindicators as ei
+ON er.run_id = ei.run_id
+WHERE ex.experiment_name IN ('SO', 'NSLC', 'ME', 'QN') 
+GROUP BY ei.run_id) as ic
+ON er.run_id = ic.run_id
+WHERE ic.indicator_count < 200000
+ORDER BY ex.experiment_name, er.run_number
+*/
+
 INSERT INTO dbo.algorithms (algorithm_id, algorithm_name)
 VALUES
     (gen_random_uuid(), 'SO'),

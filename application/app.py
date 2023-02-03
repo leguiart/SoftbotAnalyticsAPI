@@ -4,15 +4,19 @@ import numpy as np
 import io
 import base64
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy.interpolate as spinterp
+
 from scipy import stats
 from PIL import Image
 from flask_cors import CORS
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 
 from data.dal import Dal
+penguins = sns.load_dataset("penguins")
 
 INDICATOR_STATS_SET = [
             "fitness",
@@ -90,13 +94,17 @@ def encode_image_lst(imgs):
 
     return data_lst
 
-def bootstrap(data, n_boot=10000, ci=68):
-    boot_dist = []
+def boot_dist(data, n_boot=10000):
+    boot_dist_li = []
     for i in range(int(n_boot)):
         resampler = np.random.randint(0, data.shape[0], data.shape[0])
         sample = data.take(resampler, axis=0)
-        boot_dist.append(np.mean(sample, axis=0))
-    b = np.array(boot_dist)
+        boot_dist_li.append(np.mean(sample, axis=0))
+    b = np.array(boot_dist_li)
+    return b
+
+def bootstrap(data, n_boot=10000, ci=68):
+    b = boot_dist(data, n_boot=n_boot)
     s1 = np.apply_along_axis(stats.scoreatpercentile, 0, b, 50.-ci/2.)
     s2 = np.apply_along_axis(stats.scoreatpercentile, 0, b, 50.+ci/2.)
     return (s1,s2)
@@ -114,6 +122,330 @@ def tsplot(ax, data, **kw):
     ax.plot(x,data,**kw)
     ax.margins(x=0)
 
+def max_size_run_statistics_ts(df, statistic, total_runs):
+    run_statistic_mat = []
+    max_length = -1
+    for i in range(total_runs):
+        run_i = df[df['run_number'] == i + 1]
+        if len(run_i) > max_length:
+            max_length = len(run_i)
+            # reset mat
+            run_statistic_mat = []
+            run_statistic_mat += [run_i[statistic].tolist()]
+        elif len(run_i) == max_length:
+            # keep adding the ones that have the maximum length so far
+            run_statistic_mat += [run_i[statistic].tolist()]
+    run_statistic_mat = np.array(run_statistic_mat, dtype=np.float64)
+    return run_statistic_mat
+
+def validate_indicator_list(indicator_list):
+    return all(indicator in INDICATOR_STATS_SET for indicator in indicator_list)
+
+def BootstrappedIndicatorPlots(indicators, statistic, population_type, experiment_names):
+    if not validate_indicator_list(indicators):
+        raise InvalidAPIUsage(f'Please specify a set of valid indicators to plot as query string', status_code=404)
+
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+
+    pop_prefix = ''
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child']:
+        pop_prefix = population_type + '_'
+    
+    if pop_prefix != '':
+        for j, indicator in enumerate(indicators):
+            if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+                indicators[j] = pop_prefix + indicator
+
+    run_ids = []
+    exp_run_mapping = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids += experiment_runs["run_id"]
+        exp_run_mapping[experiment_name] = len(experiment_runs["run_id"])
+
+    if len(indicators) < len(INDICATOR_STATS_SET):
+        all_experiments_stats= dal.get_experiment_indicators_stats(run_ids, indicators)
+    else:
+        indicators = INDICATOR_STATS_SET
+        all_experiments_stats= dal.get_experiment_stats(run_ids)
+    if not all_experiments_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+    all_experiments_stats = pd.DataFrame(all_experiments_stats)
+
+    img_array = []
+    for indicator in indicators:
+        fig, (ax) = plt.subplots(ncols=1, sharey=True)
+        for experiment_name in experiment_names:
+            df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
+            run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+            if len(experiment_names) > 1:
+                tsplotboot(ax, run_statistic_mat, ci=95, label=experiment_name)
+                ax.legend()
+            else:
+                tsplotboot(ax, run_statistic_mat, ci=95)
+        ax.set_ylabel(f"{indicator} {statistic}")
+        ax.set_xlabel("Generation")
+        if len(experiment_names) > 1:
+            ax.set_title(f"Bootstrapped {indicator} {statistic}")
+        else:
+            ax.set_title(f"Bootstrapped {indicator} {statistic} for {experiment_names[0]} experiment")
+        fig.canvas.draw()
+        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+    return img_array
+
+
+def KdeIndicatorPlot(indicator, statistic, population_type, experiment_names):
+    if indicator not in INDICATOR_STATS_SET:
+        raise InvalidAPIUsage(f'No {indicator} indicator exists!', status_code=404)
+    if statistic not in STATISTICS:
+        raise InvalidAPIUsage(f'No {statistic} statistic for {indicator} exists!', status_code=404)
+
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child'] and indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+        indicator = population_type + '_' + indicator
+
+    df_list = []
+    for experiment_name in experiment_names:
+
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        
+        run_ids = experiment_runs["run_id"]
+        experiment_stats = dal.get_experiment_indicators_stats(run_ids, [indicator])
+        if not experiment_stats["best"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment and/or {indicator} indicator!', status_code=404)
+        
+        df = pd.DataFrame(experiment_stats)
+        df['experiment'] = experiment_name
+        
+        df_list += [df]
+    
+    resulting_df =  pd.concat(df_list, ignore_index=True)
+    resulting_df[f'{statistic} {indicator}'] = resulting_df[statistic]
+
+    fig,(ax) = plt.subplots(ncols=1)
+    sns.set(style="darkgrid")
+    sns.displot(data=resulting_df, x=f'{statistic} {indicator}', hue='experiment', kind="kde", height=7, aspect=1.5)
+    if len(experiment_names) > 1:
+        ax.set_title(f"KDE of {statistic} {indicator}")
+    else:
+        ax.set_title(f"KDE of {statistic} {indicator} for {experiment_names[0]} experiment")
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    data = buffer.read()
+    data = base64.b64encode(data).decode()
+    return data
+
+
+def KdeJointIndicatorPlot(indicator1, indicator2, statistic, population_type, experiment_names):
+    if indicator1 not in INDICATOR_STATS_SET or indicator2 not in INDICATOR_STATS_SET:
+        raise InvalidAPIUsage(f'No {indicator1}/{indicator2} indicator exists!', status_code=404)
+    if statistic not in STATISTICS:
+        raise InvalidAPIUsage(f'No {statistic} statistic for {indicator1}/{indicator2} exists!', status_code=404)
+
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child'] \
+        and indicator1 not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"] \
+        and indicator2 not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+        indicator1 = population_type + '_' + indicator1
+        indicator2 = population_type + '_' + indicator2
+
+    run_ids = []
+    exp_run_mapping = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids += experiment_runs["run_id"]
+        exp_run_mapping[experiment_name] = len(experiment_runs["run_id"])
+
+    experiment_stats = dal.get_experiment_indicators_stats(run_ids, [indicator1, indicator2])
+    if not experiment_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment and/or {indicator1} indicator!', status_code=404)
+        
+    df = pd.DataFrame(experiment_stats)
+    df_list = []
+    for experiment_name in experiment_names:
+        df1 = df[(df['indicator'] == indicator1) & (df['experiment_name'] == experiment_name)]
+        df2 = df[(df['indicator'] == indicator2) & (df['experiment_name'] == experiment_name)]
+        run_statistic_mat1 = max_size_run_statistics_ts(df1, statistic, exp_run_mapping[experiment_name])
+        run_statistic_mat2 = max_size_run_statistics_ts(df2, statistic, exp_run_mapping[experiment_name])
+        est1 = np.max(run_statistic_mat1, axis=0)
+        est2 = np.max(run_statistic_mat2, axis=0)
+        new_df = {indicator1 : est1.tolist(), indicator2 : est2.tolist()}
+        new_df = pd.DataFrame(new_df)
+        new_df['experiment'] = experiment_name
+        df_list += [new_df]
+    
+    resulting_df =  pd.concat(df_list, ignore_index=True)
+    fig,(ax) = plt.subplots(ncols=1)
+    sns.set(style="darkgrid")
+    g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
+    # g.plot_joint(sns.kdeplot, zorder=0, levels=20)
+    # g.plot_marginals(sns.kdeplot)
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    data = buffer.read()
+    data = base64.b64encode(data).decode()
+    return data
+
+
+def PairplotIndicatorsPlot(indicators, statistic, population_type, experiment_names):
+    if not validate_indicator_list(indicators):
+        raise InvalidAPIUsage(f'Please specify a set of valid indicators to plot as query string', status_code=404)
+
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+
+    pop_prefix = ''
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child']:
+        pop_prefix = population_type + '_'
+    
+    if pop_prefix != '':
+        for j, indicator in enumerate(indicators):
+            if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+                indicators[j] = pop_prefix + indicator
+
+    run_ids = []
+    exp_run_mapping = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids += experiment_runs["run_id"]
+        exp_run_mapping[experiment_name] = len(experiment_runs["run_id"])
+
+    if len(indicators) < len(INDICATOR_STATS_SET):
+        all_experiments_stats= dal.get_experiment_indicators_stats(run_ids, indicators)
+    else:
+        indicators = INDICATOR_STATS_SET
+        all_experiments_stats= dal.get_experiment_stats(run_ids)
+    if not all_experiments_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+    
+    all_experiments_stats = pd.DataFrame(all_experiments_stats)
+    df_list = []
+    for experiment_name in experiment_names:
+        new_df = {}
+        for indicator in indicators:
+            df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
+            run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+            est = np.mean(run_statistic_mat, axis=0)
+            new_df[indicator] = est.tolist()
+        new_df = pd.DataFrame(new_df)
+        new_df['experiment'] = experiment_name
+        df_list += [new_df]
+    
+    resulting_df =  pd.concat(df_list, ignore_index=True)
+    fig,(ax) = plt.subplots(ncols=1)
+    sns.set(style="darkgrid")
+    g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
+    g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    data = buffer.read()
+    data = base64.b64encode(data).decode()
+    return data
+
+
+
+def KdeBootstrappedIndicatorPlot(indicator, statistic, population_type, experiment_names):
+    if indicator not in INDICATOR_STATS_SET:
+        raise InvalidAPIUsage(f'No {indicator} indicator exists!', status_code=404)
+    if statistic not in STATISTICS:
+        raise InvalidAPIUsage(f'No {statistic} statistic for {indicator} exists!', status_code=404)
+
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child'] and indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+        indicator = population_type + '_' + indicator
+
+    run_ids = []
+    exp_run_mapping = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids += experiment_runs["run_id"]
+        exp_run_mapping[experiment_name] = len(experiment_runs["run_id"])
+
+    experiment_stats = dal.get_experiment_indicators_stats(run_ids, [indicator])
+    if not experiment_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment and/or {indicator} indicator!', status_code=404)
+    df = pd.DataFrame(experiment_stats)
+
+    df_list = []
+    for experiment_name in experiment_names:
+        df1 = df[(df['experiment_name'] == experiment_name)]
+        run_statistic_mat = max_size_run_statistics_ts(df1, statistic, exp_run_mapping[experiment_name])
+        # b = boot_dist(run_statistic_mat)
+        # est = np.mean(b, axis=0)
+        est = np.mean(run_statistic_mat, axis=0)
+        # print(b)
+        # print(est.shape)
+        bootstrapped_df = {}
+        bootstrapped_df[statistic] = est.tolist()
+        bootstrapped_df = pd.DataFrame(bootstrapped_df)
+        bootstrapped_df['experiment'] = experiment_name
+        df_list += [bootstrapped_df]
+    
+    resulting_df =  pd.concat(df_list, ignore_index=True)
+    resulting_df[f'bootstrapped {statistic} {indicator}'] = resulting_df[statistic]
+
+    fig,(ax) = plt.subplots(ncols=1)
+    sns.set(style="darkgrid")
+    sns.displot(data=resulting_df, x=f'bootstrapped {statistic} {indicator}', hue='experiment', kind="kde", height=7, aspect=1.5)
+    if len(experiment_names) > 1:
+        ax.set_title(f"KDE of {statistic} {indicator}")
+    else:
+        ax.set_title(f"KDE of {statistic} {indicator} for {experiment_names[0]} experiment")
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    data = buffer.read()
+    data = base64.b64encode(data).decode()
+    return data
+
+
 class InvalidAPIUsage(Exception):
     status_code = 400
 
@@ -129,6 +461,7 @@ class InvalidAPIUsage(Exception):
         rv['message'] = self.message
         return rv
 
+
 @app.errorhandler(InvalidAPIUsage)
 def invalid_api_usage(e):
     return jsonify(e.to_dict()), e.status_code
@@ -137,90 +470,115 @@ def invalid_api_usage(e):
 def home():
     return "Hello, Flask!"
 
-def BootstrappedIndicatorPlot(indicator, statistic, population_type, experiment_names):
-
-    if indicator not in INDICATOR_STATS_SET:
-        raise InvalidAPIUsage(f'No {indicator} indicator exists!', status_code=404)
-    if statistic not in STATISTICS:
-        raise InvalidAPIUsage(f'No {statistic} statistic for {indicator} exists!', status_code=404)
-
-    if experiment_names is None: 
-        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
-    if population_type and population_type not in ['parent', 'child']:
-        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
-    elif population_type and population_type in ['parent', 'child'] and indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
-        indicator = population_type + '_' + indicator
-
-    fig, (ax) = plt.subplots(ncols=1, sharey=True)
-    for experiment_name in experiment_names:
-
-        experiment_obj = dal.get_experiment(experiment_name)
-        if not experiment_obj:
-            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
-
-        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
-        if not experiment_runs["run_id"]:
-            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
-        
-        run_ids = experiment_runs["run_id"]
-        experiment_stats = dal.get_experiment_indicator_stats(run_ids, indicator)
-        if not experiment_stats["best"]:
-            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment and/or {indicator} indicator!', status_code=404)
-        df = pd.DataFrame(experiment_stats)
-
-        run_statistic_mat = []
-        max_length = -1
-
-        for i in range(len(run_ids)):
-            run_i = df[df['run_number'] == i + 1]
-            if len(run_i) > max_length:
-                max_length = len(run_i)
-                # reset mat
-                run_statistic_mat = []
-                run_statistic_mat += [run_i[statistic].tolist()]
-            elif len(run_i) == max_length:
-                # keep adding the ones that have the maximum length so far
-                run_statistic_mat += [run_i[statistic].tolist()]
-        run_statistic_mat = np.array(run_statistic_mat, dtype=np.float64)
-        if len(experiment_names) > 1:
-            tsplotboot(ax, run_statistic_mat, ci=95, label=experiment_name)
-            ax.legend()
-        else:
-            tsplotboot(ax, run_statistic_mat, ci=95)
-
-    ax.set_ylabel(f"{indicator} {statistic}")
-    ax.set_xlabel("Generation")
-    if len(experiment_names) > 1:
-        ax.set_title(f"Bootstrapped {indicator} {statistic}")
-    else:
-        ax.set_title(f"Bootstrapped {indicator} {statistic} for {experiment_names[0]} experiment")
-    fig.canvas.draw()
-    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    img = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
-    return img
-
-@app.route("/BootstrappedIndicatorPlotRender/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
-def BootstrappedIndicatorPlotRenderGET(indicator, statistic):
+@app.route("/PairPlotIndicatorsPlotRender/statistic/<statistic>", methods = ["GET"])
+def PairPlotIndicatorsPlotRenderGET(statistic):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    img = PairplotIndicatorsPlot(INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
+    return f'<img src="data:image/png;base64,{img}">'
 
-    img = BootstrappedIndicatorPlot(indicator, statistic, population_type, experiment_names)
-    return f'<img src="data:image/png;base64,{encode_image(img)}">'
-
-@app.route("/BootstrappedIndicatorPlot/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
-def BootstrappedIndicatorPlotGET(indicator, statistic):
+@app.route("/PairPlotIndicatorsPlot/statistic/<statistic>", methods = ["GET"])
+def PairPlotIndicatorsPlotGET(statistic):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
-
-    img = BootstrappedIndicatorPlot(indicator, statistic, population_type, experiment_names)
+    indicator_list = args.getlist('indicators')
+    img = PairplotIndicatorsPlot(INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
     return jsonify({
             'msg': 'success', 
             'size': [img.width, img.height], 
             'format': img.format,
-            'img': encode_image(img)
+            'img': img
+        })
+
+@app.route("/KdeIndicatorPlotRender/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def KdeIndicatorPlotRenderGET(indicator, statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    img = KdeIndicatorPlot(indicator, statistic, population_type, experiment_names)
+    return f'<img src="data:image/png;base64,{img}">'
+
+@app.route("/KdeIndicatorPlot/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def KdeIndicatorPlotGET(indicator, statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    img = KdeIndicatorPlot(indicator, statistic, population_type, experiment_names)
+    return jsonify({
+            'msg': 'success', 
+            'size': [img.width, img.height], 
+            'format': img.format,
+            'img': img
+        })
+
+@app.route("/JointKdeIndicatorPlotRender/indicator1/<indicator1>/indicator2/<indicator2>/statistic/<statistic>", methods = ["GET"])
+def KdeJointIndicatorPlotRenderGET(indicator1, indicator2, statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    img = KdeJointIndicatorPlot(indicator1, indicator2, statistic, population_type, experiment_names)
+    return f'<img src="data:image/png;base64,{img}">'
+
+@app.route("/JointKdeIndicatorPlot/indicator1/<indicator1>/indicator2/<indicator2>/statistic/<statistic>", methods = ["GET"])
+def KdeJointIndicatorPlotGET(indicator1, indicator2, statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    img = KdeJointIndicatorPlot(indicator1, indicator2, statistic, population_type, experiment_names)
+    return jsonify({
+            'msg': 'success', 
+            'size': [img.width, img.height], 
+            'format': img.format,
+            'img': img
+        })
+
+@app.route("/KdeBootstrappedIndicatorPlotRender/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def KdeBootstrappedIndicatorPlotRenderGET(indicator, statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    img = KdeBootstrappedIndicatorPlot(indicator, statistic, population_type, experiment_names)
+    return f'<img src="data:image/png;base64,{img}">'
+
+@app.route("/KdeBootstrappedIndicatorPlot/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def KdeBootstrappedIndicatorPlotGET(indicator, statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    img = KdeBootstrappedIndicatorPlot(indicator, statistic, population_type, experiment_names)
+    return jsonify({
+            'msg': 'success', 
+            'size': [img.width, img.height], 
+            'format': img.format,
+            'img': img
+        })
+
+@app.route("/BootstrappedIndicatorPlotsRender/statistic/<statistic>", methods = ["GET"])
+def BootstrappedIndicatorPlotsRenderGET(statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    print(indicator_list)
+    img_array = BootstrappedIndicatorPlots(INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
+
+    return "".join([f'<img src="data:image/png;base64,{encode_image(img)}"><br>' for img in img_array])
+
+@app.route("/BootstrappedIndicatorPlots/statistic/<statistic>", methods = ["GET"])
+def BootstrappedIndicatorPlotsGET(statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    img_array = BootstrappedIndicatorPlots(INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
+    return jsonify({
+            'msg': 'success', 
+            'size': [[img.width, img.height] for img in img_array], 
+            'format': img_array[0].format,
+            'img': [encode_image(img) for img in img_array]
         })
 
 @app.route("/IndicatorPlotRunRender/experiment/<experiment_name>/indicator/<indicator>/run/<run_number>/statistic/<statistic>", methods = ["GET"])
@@ -264,80 +622,6 @@ def IndicatorPlotRunRenderGET(experiment_name, indicator, run_number, statistic)
     img = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
 
     return f'<img src="data:image/png;base64,{encode_image(img)}">'
-
-@app.route("/BootstrappedAllPlotRender/statistic/<statistic>", methods = ["GET"])
-def BootstrappedAllPlotRenderGET(statistic):
-    args = request.args
-    population_type = args.get('population')
-    experiment_names = args.getlist('experiments')
-    pop_prefix = ''
-
-    if experiment_names is None: 
-        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
-
-    if population_type and population_type not in ['parent', 'child']:
-        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
-    elif population_type and population_type in ['parent', 'child']:
-        pop_prefix = population_type + '_'
-
-    run_ids = {}
-    for experiment_name in experiment_names:
-        experiment_obj = dal.get_experiment(experiment_name)
-        if not experiment_obj:
-            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
-
-        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
-        if not experiment_runs["run_id"]:
-            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
-        run_ids[experiment_name] = experiment_runs["run_id"]
-
-    experiment_stats = {}
-    for experiment_name in experiment_names:
-        experiment_stats[experiment_name] = dal.get_experiment_stats(run_ids[experiment_name])
-        if not experiment_stats[experiment_name]["best"]:
-            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
-        experiment_stats[experiment_name] = pd.DataFrame(experiment_stats[experiment_name])
-
-    img_array = []
-    for indicator in INDICATOR_STATS_SET:
-        if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
-            indicator = pop_prefix + indicator
-        fig, (ax) = plt.subplots(ncols=1, sharey=True)
-        for experiment_name in experiment_names:
-
-            run_statistic_mat = []
-            max_length = -1
-            df = experiment_stats[experiment_name]
-            for i in range(len(run_ids[experiment_name])):
-                
-                run_i = df[(df['indicator'] == indicator) & (df['run_number'] == i + 1)]
-                if len(run_i) > max_length:
-                    max_length = len(run_i)
-                    # reset mat
-                    run_statistic_mat = []
-                    run_statistic_mat += [run_i[statistic].tolist()]
-                elif len(run_i) == max_length:
-                    # keep adding the ones that have the maximum length so far
-                    run_statistic_mat += [run_i[statistic].tolist()]
-            run_statistic_mat = np.array(run_statistic_mat, dtype=np.float64)
-            if len(experiment_names) > 1:
-                tsplotboot(ax, run_statistic_mat, ci=95, label=experiment_name)
-                ax.legend()
-            else:
-                tsplotboot(ax, run_statistic_mat, ci=95)
-        ax.set_ylabel(f"{indicator} {statistic}")
-        ax.set_xlabel("Generation")
-        if len(experiment_names) > 1:
-            ax.set_title(f"Bootstrapped {indicator} {statistic}")
-        else:
-            ax.set_title(f"Bootstrapped {indicator} {statistic} for {experiment_names[0]} experiment")
-        fig.canvas.draw()
-        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
-
-
-    return "".join([f'<img src="data:image/png;base64,{encode_image(img)}"><br>' for img in img_array])
 
 @app.route("/AllPlotRunRender/experiment/<experiment_name>/run/<run_number>/statistic/<statistic>", methods = ["GET"])
 def AllPlotRunRenderGET(experiment_name, run_number, statistic):
@@ -462,8 +746,8 @@ def ArchivesPlotRenderGET(archive, indicator, statistic):
             bc_space += [list(element)]
         bc_space = np.array(bc_space)
 
-        xreg = np.linspace(0, total_voxels, x_points)
-        yreg = np.linspace(0, total_voxels, y_points)
+        xreg = np.linspace(0, total_voxels, total_voxels)
+        yreg = np.linspace(0, total_voxels, total_voxels)
         X,Y = np.meshgrid(xreg,yreg)
         fig, (ax) = plt.subplots(ncols=1, sharey=True)
         ax.set_xlabel('Active Voxels')

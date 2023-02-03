@@ -327,24 +327,26 @@ class Dal:
                 conn.close()
         return experiment_runs
 
-    def get_experiment_indicator_stats(self, run_id_list, indicator):
+    def get_experiment_indicators_stats(self, run_id_list, indicator_list):
         """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
         
-        sql = """SELECT eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number 
+        sql = """SELECT eis.indicator, eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number, ex.experiment_name 
                  FROM dbo.experimentindicatorstats as eis
                  INNER JOIN dbo.experimentruns as er
                  ON eis.run_id = er.run_id
-                 WHERE eis.run_id IN ({placeholders}) AND eis.indicator = %s
+                 INNER JOIN dbo.experiments as ex
+                 ON er.experiment_id = ex.experiment_id
+                 WHERE eis.run_id IN ({run_ids_ph}) AND eis.indicator IN ({indicators_ph})
                  ORDER BY eis.generation"""\
-                    .format(placeholders = ",".join(["%s"]*len(run_id_list)))
+                    .format(run_ids_ph = ",".join(["%s"]*len(run_id_list)), indicators_ph = ",".join(["%s"]*len(indicator_list)))
         conn = None
-        res_dict = {"best":[], "worst":[], "average":[], "std":[], "median":[], "generation":[], "run_number":[]}
+        res_dict = {"indicator":[], "best":[], "worst":[], "average":[], "std":[], "median":[], "generation":[], "run_number":[], "experiment_name" : []}
 
         try:
             # connect to the PostgreSQL database
             conn = psycopg2.connect(**self.params)
             cur = conn.cursor()
-            cur.execute(sql, tuple(run_id_list + [indicator]))
+            cur.execute(sql, tuple(run_id_list + indicator_list))
             for row in iter_row(cur, 1000):
                 for column_index, column in enumerate(res_dict.keys()):
                     res_dict[column]+=[row[column_index]]
@@ -360,15 +362,17 @@ class Dal:
 
     def get_experiment_stats(self, run_id_list):
         """ query experiment indicator stats of all runs of an experiments from the dbo.experimentindicatorstats table """
-        sql = """SELECT eis.indicator, eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number
+        sql = """SELECT eis.indicator, eis.best, eis.worst, eis.average, eis.std, eis.median, eis.generation, er.run_number, ex.experiment_name 
                  FROM dbo.experimentindicatorstats as eis
                  INNER JOIN dbo.experimentruns as er
                  ON eis.run_id = er.run_id
+                 INNER JOIN dbo.experiments as ex
+                 ON er.experiment_id = ex.experiment_id
                  WHERE eis.run_id IN ({placeholders})
                  ORDER BY eis.generation"""\
                     .format(placeholders = ",".join(["%s"]*len(run_id_list)))
         conn = None
-        res_dict = {"indicator":[], "best":[], "worst":[], "average":[], "std":[], "median":[], "generation":[], "run_number":[]}
+        res_dict = {"indicator":[], "best":[], "worst":[], "average":[], "std":[], "median":[], "generation":[], "run_number":[], "experiment_name" : []}
 
         try:
             # connect to the PostgreSQL database
