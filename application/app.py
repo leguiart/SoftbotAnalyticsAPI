@@ -60,6 +60,28 @@ INDICATOR_STATS_SET = [
             "simplified_gene_ne_div",
             "simplified_gene_nws_div"]
 
+WINNING_INDICATORS = [
+            "fitness",
+            "unaligned_novelty",
+            "aligned_novelty",
+            "gene_diversity",
+            "control_gene_div",
+            "morpho_gene_div",
+            "morpho_div",
+            "endpoint_div",
+            "unaligned_novelty_archive_fit",
+            "aligned_novelty_archive_fit",
+            "unaligned_novelty_archive_novelty",
+            "aligned_novelty_archive_novelty",
+            "qd-score_ff",
+            "qd-score_fun",
+            "qd-score_fan",
+            "qd-score_anf",
+            "qd-score_anun",
+            "qd-score_anan",
+            "coverage"]
+
+
 ARCHIVES = ["f_me_archive",
             "an_me_archive",
             "novelty_archive_un",
@@ -213,7 +235,6 @@ def IndicatorBsConvergencePlotsPlots(indicators, statistics, population_type, ex
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
-
 def IndicatorJointKdePlot(indicator1, indicator2, statistic, population_type, experiment_names):
     if indicator1 not in INDICATOR_STATS_SET or indicator2 not in INDICATOR_STATS_SET:
         raise InvalidAPIUsage(f'No {indicator1}/{indicator2} indicator exists!', status_code=404)
@@ -272,7 +293,6 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistic, population_type, ex
     data = buffer.read()
     data = base64.b64encode(data).decode()
     return data
-
 
 def IndicatorPairPlots(indicators, statistic, population_type, experiment_names):
     if not validate_indicator_list(indicators):
@@ -337,7 +357,6 @@ def IndicatorPairPlots(indicators, statistic, population_type, experiment_names)
     data = buffer.read()
     data = base64.b64encode(data).decode()
     return data
-
 
 def IndicatorKdePlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
     if not validate_statistic_list(statistics):
@@ -440,6 +459,97 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
+def BordaWinner(indicators, statistic, population_type, experiment_names):
+    if not validate_statistic_list([statistic]):
+        raise InvalidAPIUsage(f'Please specify a set of valid statistics to plot as query string', status_code=404)
+    if not validate_indicator_list(indicators):
+        raise InvalidAPIUsage(f'Please specify a set of valid indicators to plot as query string', status_code=404)
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+    pop_prefix = ''
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child']:
+        pop_prefix = population_type + '_'
+    
+    if pop_prefix != '':
+        for j, indicator in enumerate(indicators):
+            if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+                indicators[j] = pop_prefix + indicator
+
+    run_ids = []
+    exp_run_mapping = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids += experiment_runs["run_id"]
+        exp_run_mapping[experiment_name] = len(experiment_runs["run_id"])
+
+    if len(indicators) < len(INDICATOR_STATS_SET):
+        all_experiments_stats= dal.get_experiment_indicators_stats(run_ids, indicators)
+    else:
+        indicators = INDICATOR_STATS_SET
+        all_experiments_stats= dal.get_experiment_stats(run_ids)
+    if not all_experiments_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+    all_experiments_stats = pd.DataFrame(all_experiments_stats)
+
+    # Compute indicator scores per algo
+    alpha = 0.05
+    indicator_algo_scores = dict(zip(indicators, [{exp : 0 for exp in experiment_names} for _ in indicators]))
+    permutation_counts = {}
+    for indicator in indicators:
+        for i in range(len(experiment_names)):
+            algo1 = experiment_names[i]
+            df1 = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == algo1)]
+            data1 = df1[statistic].to_numpy()
+            mu1 = data1.mean()
+            # sigma1 = data1.std()
+            for j in range(i + 1, len(experiment_names)):
+                algo2 = experiment_names[j]
+                df2 = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == algo2)]
+                data2 = df2[statistic].to_numpy()
+                mu2 = data2.mean()
+                # sigma2 = data2.std()
+                res = stats.wilcoxon(data1, y = data2, correction=True)
+                if res.pvalue < alpha:
+                    # significantly different
+                    if mu1 > mu2:
+                        indicator_algo_scores[indicator][algo1]+=1
+                        indicator_algo_scores[indicator][algo2]-=1
+                    else:
+                        indicator_algo_scores[indicator][algo1]-=1
+                        indicator_algo_scores[indicator][algo2]+=1
+        # We now sort the algos based on their results for the current indicator
+        sorted_algos = dict(sorted(indicator_algo_scores[indicator].items(), key = lambda x : x[1], reverse=True))
+        permutation = tuple(sorted_algos.keys())
+        # Next we add up to the permutation count, this will be useful when computing the borda count for each algo
+        if permutation in permutation_counts:
+            permutation_counts[permutation] += 1
+        else:
+            permutation_counts[permutation] = 1
+    
+    # We now count the number of times each algo was 1st, 2nd, ..., etc.
+    places_count = {exp : [0]*len(experiment_names) for exp in experiment_names}
+    for permutation, count in permutation_counts.items():
+        for i, algo in enumerate(permutation):
+            places_count[algo][i] += count
+
+    # We now get the borda count for each algo, given each place count
+    borda_count = {}
+    place_weights = np.arange(len(experiment_names), 0, -1)
+    for exp in experiment_names:
+        places_count_vec = np.array(places_count[exp])
+        borda_count[exp] = int(np.dot(places_count_vec, place_weights))
+
+    borda_count = dict(sorted(borda_count.items(), key = lambda x : x[1], reverse=True))
+
+    return borda_count, places_count, {",".join(perm) : count for perm, count in permutation_counts.items()}, indicator_algo_scores
 
 class InvalidAPIUsage(Exception):
     status_code = 400
@@ -471,7 +581,7 @@ def IndicatorPairPlotsRenderGET(statistic):
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
-    img = IndicatorPairPlots(INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
+    img = IndicatorPairPlots(INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
     return f'<img src="data:image/png;base64,{img}">'
 
 @app.route("/IndicatorPairPlots/statistic/<statistic>", methods = ["GET"])
@@ -480,7 +590,7 @@ def IndicatorPairPlotsGET(statistic):
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
-    img = IndicatorPairPlots(INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
+    img = IndicatorPairPlots(INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
     return jsonify({
             'msg': 'success', 
             'size': [img.width, img.height], 
@@ -516,7 +626,7 @@ def IndicatorKdePlotsRenderGET(mode):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
         array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -543,7 +653,7 @@ def IndicatorKdePlotsGET(mode):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
         array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -575,7 +685,7 @@ def IndicatorBsConvergencePlotsPlotsRenderGET(n_boot):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if n_boot == 'default':
         array_of_img_arrays = IndicatorBsConvergencePlotsPlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -591,7 +701,7 @@ def IndicatorBsConvergencePlotsPlotsGET(n_boot):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if n_boot == 'default':
         array_of_img_arrays = IndicatorBsConvergencePlotsPlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -788,6 +898,22 @@ def ArchivesPlotRenderGET(archive, indicator, statistic):
         img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
     
     return "".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array])
+
+@app.route("/BordaWinner/statistic/<statistic>", methods = ["GET"])
+def BordaWinnerGET(statistic):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    indicator_list = WINNING_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    borda_count, places_count, permutation_counts, indicator_algo_scores = BordaWinner(indicator_list, statistic, population_type, experiment_names)
+    return jsonify({
+            'msg': 'success', 
+            'borda_count': borda_count, 
+            'places_count': places_count,
+            'permutation_counts': permutation_counts,
+            'indicator_algo_scores': indicator_algo_scores
+        })
 
 if __name__ == '__main__':
     app.run(debug=True)
