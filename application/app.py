@@ -12,7 +12,6 @@ from scipy import stats
 from PIL import Image
 from flask_cors import CORS
 from flask import Flask, jsonify, request
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 # from application.data.dal import Dal # debug
 from data.dal import Dal
@@ -212,7 +211,7 @@ def IndicatorBsConvergencePlotsPlots(indicators, statistics, population_type, ex
     for indicator in indicators:
         img_array = []
         for statistic in statistics:
-            fig, (ax) = plt.subplots(ncols=1, sharey=True)
+            fig, ax = plt.subplots(ncols=1, sharey=True)
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
                 run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
@@ -231,15 +230,15 @@ def IndicatorBsConvergencePlotsPlots(indicators, statistics, population_type, ex
             data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
-            plt.close()
+            plt.close(fig)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
-def IndicatorJointKdePlot(indicator1, indicator2, statistic, population_type, experiment_names):
-    if indicator1 not in INDICATOR_STATS_SET or indicator2 not in INDICATOR_STATS_SET:
+def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
+    if not validate_statistic_list(statistics):
+        raise InvalidAPIUsage(f'Please specify a set of valid statistics to plot as query string', status_code=404)
+    if not validate_indicator_list([indicator1, indicator2]):
         raise InvalidAPIUsage(f'No {indicator1}/{indicator2} indicator exists!', status_code=404)
-    if statistic not in STATISTICS:
-        raise InvalidAPIUsage(f'No {statistic} statistic for {indicator1}/{indicator2} exists!', status_code=404)
 
     if experiment_names is None: 
         raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
@@ -250,6 +249,21 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistic, population_type, ex
         and indicator2 not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
         indicator1 = population_type + '_' + indicator1
         indicator2 = population_type + '_' + indicator2
+
+    estimator_func = None
+    if estimator is not None and estimator in STATISTICS:
+        if estimator == "best":
+            estimator_func = np.max
+        elif estimator == "worst":
+            estimator_func = np.min
+        elif estimator == "average":
+            estimator_func = np.mean
+        elif estimator == "std":
+            estimator_func = np.std
+        elif estimator == "median":
+            estimator_func = np.median
+    elif estimator is not None and estimator not in STATISTICS: 
+        raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
 
     run_ids = []
     exp_run_mapping = {}
@@ -268,33 +282,52 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistic, population_type, ex
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment and/or {indicator1} indicator!', status_code=404)
         
     df = pd.DataFrame(experiment_stats)
-    df_list = []
-    for experiment_name in experiment_names:
-        df1 = df[(df['indicator'] == indicator1) & (df['experiment_name'] == experiment_name)]
-        df2 = df[(df['indicator'] == indicator2) & (df['experiment_name'] == experiment_name)]
-        run_statistic_mat1 = max_size_run_statistics_ts(df1, statistic, exp_run_mapping[experiment_name])
-        run_statistic_mat2 = max_size_run_statistics_ts(df2, statistic, exp_run_mapping[experiment_name])
-        est1 = np.max(run_statistic_mat1, axis=0)
-        est2 = np.max(run_statistic_mat2, axis=0)
-        new_df = {indicator1 : est1.tolist(), indicator2 : est2.tolist()}
-        new_df = pd.DataFrame(new_df)
-        new_df['experiment'] = experiment_name
-        df_list += [new_df]
-    
-    resulting_df =  pd.concat(df_list, ignore_index=True)
-    fig,(ax) = plt.subplots(ncols=1)
-    sns.set(style="darkgrid")
-    g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
-    # g.plot_joint(sns.kdeplot, zorder=0, levels=20)
-    # g.plot_marginals(sns.kdeplot)
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    data = buffer.read()
-    data = base64.b64encode(data).decode()
-    return data
+    img_array = []
+    for statistic in statistics:
+        df_list = []
+        for experiment_name in experiment_names:
+            df1 = df[(df['indicator'] == indicator1) & (df['experiment_name'] == experiment_name)]
+            df2 = df[(df['indicator'] == indicator2) & (df['experiment_name'] == experiment_name)]
+            if estimator_func:
+                run_statistic_mat1 = max_size_run_statistics_ts(df1, statistic, exp_run_mapping[experiment_name])
+                run_statistic_mat2 = max_size_run_statistics_ts(df2, statistic, exp_run_mapping[experiment_name])
+                est1 = estimator_func(run_statistic_mat1, axis=0)
+                est2 = estimator_func(run_statistic_mat2, axis=0)
+                processed_data1 = est1.tolist()
+                processed_data2 = est2.tolist()
+            elif bootsrapped_dist:
+                run_statistic_mat1 = max_size_run_statistics_ts(df1, statistic, exp_run_mapping[experiment_name])
+                run_statistic_mat2 = max_size_run_statistics_ts(df2, statistic, exp_run_mapping[experiment_name])
+                b1 = boot_dist(run_statistic_mat1, n_boot=n_boot)
+                b2 = boot_dist(run_statistic_mat2, n_boot=n_boot)
+                processed_data1 = b1.flatten().tolist()
+                processed_data2= b2.flatten().tolist()
+            else:
+                processed_data1 = df1[statistic].tolist()
+                processed_data2 = df2[statistic].tolist()
+            new_df = {indicator1 : processed_data1, indicator2 : processed_data2}
+            new_df = pd.DataFrame(new_df)
+            new_df['experiment'] = experiment_name
+            df_list += [new_df]
+        
+        resulting_df =  pd.concat(df_list, ignore_index=True)
+        # fig,ax = plt.subplots(ncols=1)
+        sns.set(style="darkgrid")
+        g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
+        # g.plot_joint(sns.kdeplot, zorder=0, levels=20)
+        # g.plot_marginals(sns.kdeplot)
+        buffer = io.BytesIO()
+        g.savefig(buffer, format='png')
+        buffer.seek(0)
+        data = buffer.read()
+        data = base64.b64encode(data).decode()
+        img_array += [data]
+        plt.close(g.figure)
+    return img_array
 
-def IndicatorPairPlots(indicators, statistic, population_type, experiment_names):
+def IndicatorPairPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
+    if not validate_statistic_list(statistics):
+        raise InvalidAPIUsage(f'Please specify a set of valid statistics to plot as query string', status_code=404)
     if not validate_indicator_list(indicators):
         raise InvalidAPIUsage(f'Please specify a set of valid indicators to plot as query string', status_code=404)
 
@@ -311,6 +344,21 @@ def IndicatorPairPlots(indicators, statistic, population_type, experiment_names)
         for j, indicator in enumerate(indicators):
             if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
                 indicators[j] = pop_prefix + indicator
+
+    estimator_func = None
+    if estimator is not None and estimator in STATISTICS:
+        if estimator == "best":
+            estimator_func = np.max
+        elif estimator == "worst":
+            estimator_func = np.min
+        elif estimator == "average":
+            estimator_func = np.mean
+        elif estimator == "std":
+            estimator_func = np.std
+        elif estimator == "median":
+            estimator_func = np.median
+    elif estimator is not None and estimator not in STATISTICS: 
+        raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
 
     run_ids = []
     exp_run_mapping = {}
@@ -334,29 +382,41 @@ def IndicatorPairPlots(indicators, statistic, population_type, experiment_names)
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
-    df_list = []
-    for experiment_name in experiment_names:
-        new_df = {}
-        for indicator in indicators:
-            df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
-            run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
-            est = np.max(run_statistic_mat, axis=0)
-            new_df[indicator] = est.tolist()
-        new_df = pd.DataFrame(new_df)
-        new_df['experiment'] = experiment_name
-        df_list += [new_df]
-    
-    resulting_df =  pd.concat(df_list, ignore_index=True)
-    fig,(ax) = plt.subplots(ncols=1)
-    sns.set(style="darkgrid")
-    g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
-    g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    data = buffer.read()
-    data = base64.b64encode(data).decode()
-    return data
+    img_array = []
+    for statistic in statistics:
+        df_list = []
+        for experiment_name in experiment_names:
+            new_df = {}
+            for indicator in indicators:
+                df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
+                if estimator_func:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    est = estimator_func(run_statistic_mat, axis=0)
+                    processed_data = est.tolist()
+                elif bootsrapped_dist:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    b = boot_dist(run_statistic_mat, n_boot=n_boot)
+                    processed_data = b.flatten().tolist()
+                else:
+                    processed_data = df[statistic].tolist()
+                new_df[indicator] = processed_data
+            new_df = pd.DataFrame(new_df)
+            new_df['experiment'] = experiment_name
+            df_list += [new_df]
+        
+        resulting_df =  pd.concat(df_list, ignore_index=True)
+        # fig,ax = plt.subplots(ncols=1)
+        sns.set(style="darkgrid")
+        g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
+        g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
+        buffer = io.BytesIO()
+        g.savefig(buffer, format='png')
+        buffer.seek(0)
+        data = buffer.read()
+        data = base64.b64encode(data).decode()
+        img_array += [data]
+        plt.close(g.figure)
+    return img_array
 
 def IndicatorKdePlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
     if not validate_statistic_list(statistics):
@@ -442,24 +502,26 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[f'bootstrapped {statistic} {indicator}'] = resulting_df[statistic]
 
-            fig,(ax) = plt.subplots(ncols=1)
+            # fig,ax = plt.subplots(ncols=1)
+            # if len(experiment_names) > 1:
+            #     ax.set_title(f"KDE of {statistic} {indicator}")
+            # else:
+            #     ax.set_title(f"KDE of {statistic} {indicator} for {experiment_names[0]} experiment")
+            # ax.set_xlabel(f'bootstrapped {statistic} {indicator}')
             sns.set(style="darkgrid")
-            sns.displot(data=resulting_df, x=f'bootstrapped {statistic} {indicator}', hue='experiment', kind="kde", height=5, aspect=1.5)
-            if len(experiment_names) > 1:
-                ax.set_title(f"KDE of {statistic} {indicator}")
-            else:
-                ax.set_title(f"KDE of {statistic} {indicator} for {experiment_names[0]} experiment")
+            g = sns.displot(data=resulting_df, x = f'bootstrapped {statistic} {indicator}', hue='experiment', kind="kde", height=5, aspect=1.5)
+
             buffer = io.BytesIO()
-            plt.savefig(buffer, format='png')
+            g.savefig(buffer, format='png')
             buffer.seek(0)
             data = buffer.read()
             data = base64.b64encode(data).decode()
             img_array += [data]
-            plt.close()
+            plt.close(g.figure)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
-def BordaWinner(indicators, statistic, population_type, experiment_names):
+def ChooseWinner(indicators, statistic, population_type, experiment_names):
     if not validate_statistic_list([statistic]):
         raise InvalidAPIUsage(f'Please specify a set of valid statistics to plot as query string', status_code=404)
     if not validate_indicator_list(indicators):
@@ -502,6 +564,7 @@ def BordaWinner(indicators, statistic, population_type, experiment_names):
     # Compute indicator scores per algo
     alpha = 0.05
     indicator_algo_scores = dict(zip(indicators, [{exp : 0 for exp in experiment_names} for _ in indicators]))
+    condorcet_scores = dict(zip(experiment_names, [{exp : 0 for exp in experiment_names} for _ in experiment_names]))
     permutation_counts = {}
     for indicator in indicators:
         for i in range(len(experiment_names)):
@@ -520,9 +583,11 @@ def BordaWinner(indicators, statistic, population_type, experiment_names):
                 if res.pvalue < alpha:
                     # significantly different
                     if mu1 > mu2:
+                        condorcet_scores[algo1][algo2] += 1
                         indicator_algo_scores[indicator][algo1]+=1
                         indicator_algo_scores[indicator][algo2]-=1
                     else:
+                        condorcet_scores[algo2][algo1] += 1
                         indicator_algo_scores[indicator][algo1]-=1
                         indicator_algo_scores[indicator][algo2]+=1
         # We now sort the algos based on their results for the current indicator
@@ -549,7 +614,7 @@ def BordaWinner(indicators, statistic, population_type, experiment_names):
 
     borda_count = dict(sorted(borda_count.items(), key = lambda x : x[1], reverse=True))
 
-    return borda_count, places_count, {",".join(perm) : count for perm, count in permutation_counts.items()}, indicator_algo_scores
+    return condorcet_scores, borda_count, places_count, {",".join(perm) : count for perm, count in permutation_counts.items()}, indicator_algo_scores
 
 class InvalidAPIUsage(Exception):
     status_code = 400
@@ -575,48 +640,120 @@ def invalid_api_usage(e):
 def home():
     return "Hello, Flask!"
 
-@app.route("/IndicatorPairPlotsRender/statistic/<statistic>", methods = ["GET"])
-def IndicatorPairPlotsRenderGET(statistic):
+@app.route("/IndicatorPairPlotsRender/mode/<mode>", methods = ["GET"])
+def IndicatorPairPlotsRenderGET(mode):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
-    img = IndicatorPairPlots(INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
-    return f'<img src="data:image/png;base64,{img}">'
+    statistic_list = args.getlist('statistics')
+    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    if mode == 'full':
+        img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    return "".join([f'<img src="data:image/png;base64,{img}">' for img in img_array])
 
-@app.route("/IndicatorPairPlots/statistic/<statistic>", methods = ["GET"])
-def IndicatorPairPlotsGET(statistic):
+@app.route("/IndicatorPairPlots/mode/<mode>", methods = ["GET"])
+def IndicatorPairPlotsGET(mode):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
-    img = IndicatorPairPlots(INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list, statistic, population_type, experiment_names)
+    statistic_list = args.getlist('statistics')
+    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    if mode == 'full':
+        img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     return jsonify({
             'msg': 'success', 
-            'size': [img.width, img.height], 
-            'format': img.format,
-            'img': img
+            'size': [[img.width, img.height] for img in img_array], 
+            'format': img_array[0].format,
+            'img': [img for img in img_array]
         })
 
-@app.route("/IndicatorJointKdePlotRender/indicator1/<indicator1>/indicator2/<indicator2>/statistic/<statistic>", methods = ["GET"])
-def IndicatorJointKdePlotRenderGET(indicator1, indicator2, statistic):
+@app.route("/IndicatorJointKdePlotRender/indicator1/<indicator1>/indicator2/<indicator2>/mode/<mode>", methods = ["GET"])
+def IndicatorJointKdePlotRenderGET(indicator1, indicator2, mode):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
-    img = IndicatorJointKdePlot(indicator1, indicator2, statistic, population_type, experiment_names)
-    return f'<img src="data:image/png;base64,{img}">'
+    statistic_list = args.getlist('statistics')
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names)
+    if mode == 'full':
+        img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    return "".join([f'<img src="data:image/png;base64,{img}">' for img in img_array])
 
-@app.route("/IndicatorJointKdePlot/indicator1/<indicator1>/indicator2/<indicator2>/statistic/<statistic>", methods = ["GET"])
-def IndicatorJointKdePlotGET(indicator1, indicator2, statistic):
+@app.route("/IndicatorJointKdePlot/indicator1/<indicator1>/indicator2/<indicator2>//mode/<mode>", methods = ["GET"])
+def IndicatorJointKdePlotGET(indicator1, indicator2, mode):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
-    img = IndicatorJointKdePlot(indicator1, indicator2, statistic, population_type, experiment_names)
+    statistic_list = args.getlist('statistics')
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names)
+    if mode == 'full':
+        img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     return jsonify({
             'msg': 'success', 
-            'size': [img.width, img.height], 
-            'format': img.format,
-            'img': img
+            'size': [[img.width, img.height] for img in img_array], 
+            'format': img_array[0].format,
+            'img': [img for img in img_array]
         })
 
 @app.route("/IndicatorKdePlotsRender/mode/<mode>", methods = ["GET"])
@@ -906,9 +1043,10 @@ def BordaWinnerGET(statistic):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     indicator_list = WINNING_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
-    borda_count, places_count, permutation_counts, indicator_algo_scores = BordaWinner(indicator_list, statistic, population_type, experiment_names)
+    condorcet_scores, borda_count, places_count, permutation_counts, indicator_algo_scores = ChooseWinner(indicator_list, statistic, population_type, experiment_names)
     return jsonify({
             'msg': 'success', 
+            'condorcet_scores' : condorcet_scores,
             'borda_count': borda_count, 
             'places_count': places_count,
             'permutation_counts': permutation_counts,
