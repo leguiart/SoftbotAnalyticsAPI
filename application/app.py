@@ -59,6 +59,39 @@ INDICATOR_STATS_SET = [
             "simplified_gene_ne_div",
             "simplified_gene_nws_div"]
 
+PLOT_INDICATORS = [
+            "fitness",
+            "morphology",
+            "unaligned_novelty",
+            "aligned_novelty",
+            "gene_diversity",
+            "control_gene_div",
+            "morpho_gene_div",
+            "morpho_div",
+            "endpoint_div",
+            "morphology_active",
+            "morphology_passive",
+            "unaligned_novelty_archive_fit",
+            "aligned_novelty_archive_fit",
+            "unaligned_novelty_archive_novelty",
+            "aligned_novelty_archive_novelty",
+            "qd-score_ff",
+            "qd-score_fun",
+            "qd-score_fan",
+            "qd-score_anf",
+            "qd-score_anun",
+            "qd-score_anan",
+            "coverage",            
+            "control_cppn_nodes",
+            "control_cppn_edges",
+            "control_cppn_ws",
+            "morpho_cppn_nodes",
+            "morpho_cppn_edges",
+            "morpho_cppn_ws",
+            "simplified_gene_div",
+            "simplified_gene_ne_div",
+            "simplified_gene_nws_div"]
+
 WINNING_INDICATORS = [
             "fitness",
             "unaligned_novelty",
@@ -79,7 +112,6 @@ WINNING_INDICATORS = [
             "qd-score_anun",
             "qd-score_anan",
             "coverage"]
-
 
 ARCHIVES = ["f_me_archive",
             "an_me_archive",
@@ -164,7 +196,7 @@ def validate_indicator_list(indicator_list):
 def validate_statistic_list(statistic_list):
     return all(statistic in STATISTICS for statistic in statistic_list)
 
-def IndicatorBsConvergencePlotsPlots(indicators, statistics, population_type, experiment_names, n_boot = 10000):
+def IndicatorBsConvergencePlots(indicators, statistics, population_type, experiment_names, n_boot = 10000):
     if not validate_statistic_list(statistics):
         raise InvalidAPIUsage(f'Please specify a set of valid statistics to plot as query string', status_code=404)
 
@@ -316,6 +348,12 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
         # g.plot_joint(sns.kdeplot, zorder=0, levels=20)
         # g.plot_marginals(sns.kdeplot)
+        if estimator:
+            g.figure.suptitle(f'Joint KDE plots of {estimator} of generational {statistic}')
+        elif bootsrapped_dist:
+            g.figure.suptitle(f'Joint KDE plots of bootstrapped (n={n_boot}) generational {statistic}')
+        else:
+            g.figure.suptitle(f'Joint KDE plots of full generational {statistic} distribution')
         buffer = io.BytesIO()
         g.savefig(buffer, format='png')
         buffer.seek(0)
@@ -409,6 +447,13 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         sns.set(style="darkgrid")
         g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
         g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
+        if estimator:
+            g.figure.suptitle(f'Regression/Scatter plots of {estimator} of generational {statistic}')
+        elif bootsrapped_dist:
+            g.figure.suptitle(f'Regression/Scatter plots of bootstrapped (n={n_boot}) generational {statistic}')
+        else:
+            g.figure.suptitle(f'Regression/Scatter plots of full generational {statistic} distribution')
+        
         buffer = io.BytesIO()
         g.savefig(buffer, format='png')
         buffer.seek(0)
@@ -500,16 +545,16 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
                 df_list += [df_entry]
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
-            resulting_df[f'bootstrapped {statistic} {indicator}'] = resulting_df[statistic]
+            resulting_df[indicator] = resulting_df[statistic]
 
-            # fig,ax = plt.subplots(ncols=1)
-            # if len(experiment_names) > 1:
-            #     ax.set_title(f"KDE of {statistic} {indicator}")
-            # else:
-            #     ax.set_title(f"KDE of {statistic} {indicator} for {experiment_names[0]} experiment")
-            # ax.set_xlabel(f'bootstrapped {statistic} {indicator}')
             sns.set(style="darkgrid")
-            g = sns.displot(data=resulting_df, x = f'bootstrapped {statistic} {indicator}', hue='experiment', kind="kde", height=5, aspect=1.5)
+            g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
+            if estimator:
+                g.set(title=f'KDE plot of {estimator} of generational {indicator} {statistic}')
+            elif bootsrapped_dist:
+                g.set(title=f'KDE plot of bootstrapped (n={n_boot}) generational {indicator} {statistic}')
+            else:
+                g.set(title=f'KDE plot of full generational {indicator} {statistic} distribution')
 
             buffer = io.BytesIO()
             g.savefig(buffer, format='png')
@@ -631,7 +676,6 @@ class InvalidAPIUsage(Exception):
         rv['message'] = self.message
         return rv
 
-
 @app.errorhandler(InvalidAPIUsage)
 def invalid_api_usage(e):
     return jsonify(e.to_dict()), e.status_code
@@ -647,7 +691,7 @@ def IndicatorPairPlotsRenderGET(mode):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
         img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -674,7 +718,7 @@ def IndicatorPairPlotsGET(mode):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
         img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -696,7 +740,7 @@ def IndicatorPairPlotsGET(mode):
             'msg': 'success', 
             'size': [[img.width, img.height] for img in img_array], 
             'format': img_array[0].format,
-            'img': [img for img in img_array]
+            'img': img_array
         })
 
 @app.route("/IndicatorJointKdePlotRender/indicator1/<indicator1>/indicator2/<indicator2>/mode/<mode>", methods = ["GET"])
@@ -725,7 +769,7 @@ def IndicatorJointKdePlotRenderGET(indicator1, indicator2, mode):
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     return "".join([f'<img src="data:image/png;base64,{img}">' for img in img_array])
 
-@app.route("/IndicatorJointKdePlot/indicator1/<indicator1>/indicator2/<indicator2>//mode/<mode>", methods = ["GET"])
+@app.route("/IndicatorJointKdePlot/indicator1/<indicator1>/indicator2/<indicator2>/mode/<mode>", methods = ["GET"])
 def IndicatorJointKdePlotGET(indicator1, indicator2, mode):
     args = request.args
     population_type = args.get('population')
@@ -753,7 +797,7 @@ def IndicatorJointKdePlotGET(indicator1, indicator2, mode):
             'msg': 'success', 
             'size': [[img.width, img.height] for img in img_array], 
             'format': img_array[0].format,
-            'img': [img for img in img_array]
+            'img': img_array
         })
 
 @app.route("/IndicatorKdePlotsRender/mode/<mode>", methods = ["GET"])
@@ -763,7 +807,7 @@ def IndicatorKdePlotsRenderGET(mode):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
         array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -790,7 +834,7 @@ def IndicatorKdePlotsGET(mode):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
         array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names)
@@ -812,38 +856,38 @@ def IndicatorKdePlotsGET(mode):
             'msg': 'success', 
             'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
             'format': array_of_img_arrays[0][0].format,
-            'img': [[img for img in img_array] for img_array in array_of_img_arrays]
+            'img': array_of_img_arrays
         })
 
-@app.route("/IndicatorBsConvergencePlotsPlotsRender/n_boot/<n_boot>", methods = ["GET"])
-def IndicatorBsConvergencePlotsPlotsRenderGET(n_boot):
+@app.route("/IndicatorBsConvergencePlotsRender/n_boot/<n_boot>", methods = ["GET"])
+def IndicatorBsConvergencePlotsRenderGET(n_boot):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if n_boot == 'default':
-        array_of_img_arrays = IndicatorBsConvergencePlotsPlots(indicator_list, statistic_list, population_type, experiment_names)
+        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names)
     else:
-        array_of_img_arrays = IndicatorBsConvergencePlotsPlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot)
+        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot)
 
     return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
 
-@app.route("/IndicatorBsConvergencePlotsPlots/n_boot/<n_boot>", methods = ["GET"])
-def IndicatorBsConvergencePlotsPlotsGET(n_boot):
+@app.route("/IndicatorBsConvergencePlots/n_boot/<n_boot>", methods = ["GET"])
+def IndicatorBsConvergencePlotsGET(n_boot):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
-    indicator_list = INDICATOR_STATS_SET.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if n_boot == 'default':
-        array_of_img_arrays = IndicatorBsConvergencePlotsPlots(indicator_list, statistic_list, population_type, experiment_names)
+        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names)
     else:
-        array_of_img_arrays = IndicatorBsConvergencePlotsPlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot)
+        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot)
     return jsonify({
             'msg': 'success', 
             'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
@@ -1036,8 +1080,8 @@ def ArchivesPlotRenderGET(archive, indicator, statistic):
     
     return "".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array])
 
-@app.route("/BordaWinner/statistic/<statistic>", methods = ["GET"])
-def BordaWinnerGET(statistic):
+@app.route("/ChooseWinner/statistic/<statistic>", methods = ["GET"])
+def ChooseWinnerGET(statistic):
     args = request.args
     population_type = args.get('population')
     experiment_names = args.getlist('experiments')
