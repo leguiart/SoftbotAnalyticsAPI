@@ -9,7 +9,7 @@ from psycopg2.extras import Json
 from psycopg2.extensions import register_adapter
 
 # from application.data.config import config # debug
-from data.config import config 
+from data.config import config
 
 psycopg2.extras.register_uuid()
 register_adapter(dict, Json)

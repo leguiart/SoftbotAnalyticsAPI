@@ -131,3 +131,5 @@ dmypy.json
 
 
 database.ini
+/kde_distributions
+retrieved_plots.json

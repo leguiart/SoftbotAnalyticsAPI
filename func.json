@@ -1,0 +1,11 @@
+{
+    "kde_distributions" : [
+        [        
+            ["bootstrap_dist", ["fitness","coverage","unaligned_novelty"], ["best","average"], ["MNSLC","NSLC","SO","ME","QN"]],
+            {
+                "population" : "parent",
+                "n_boot":200
+            }
+        ]
+    ]
+}

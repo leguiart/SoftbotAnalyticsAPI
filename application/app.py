@@ -346,8 +346,9 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         # fig,ax = plt.subplots(ncols=1)
         sns.set(style="darkgrid")
         g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
-        # g.plot_joint(sns.kdeplot, zorder=0, levels=20)
-        # g.plot_marginals(sns.kdeplot)
+        # g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2,  height=9, ratio=2)
+        # g.plot_joint(sns.kdeplot, hue='experiment', zorder=0, levels=20)
+        g.plot_marginals(sns.histplot, kde = True)
         if estimator:
             g.figure.suptitle(f'Joint KDE plots of {estimator} of generational {statistic}')
         elif bootsrapped_dist:
@@ -420,7 +421,9 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
-    img_array = []
+    pairplots_img_array = []
+    correlations_img_array = []
+    correlation_tables_array = []
     for statistic in statistics:
         df_list = []
         for experiment_name in experiment_names:
@@ -443,7 +446,6 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
             df_list += [new_df]
         
         resulting_df =  pd.concat(df_list, ignore_index=True)
-        # fig,ax = plt.subplots(ncols=1)
         sns.set(style="darkgrid")
         g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
         g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
@@ -457,11 +459,245 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         buffer = io.BytesIO()
         g.savefig(buffer, format='png')
         buffer.seek(0)
-        data = buffer.read()
-        data = base64.b64encode(data).decode()
-        img_array += [data]
+        data1 = buffer.read()
+        data1 = base64.b64encode(data1).decode()
+        pairplots_img_array += [data1]  
         plt.close(g.figure)
-    return img_array
+
+        fig,ax = plt.subplots(ncols=1)
+        correlation_table = resulting_df.corr()
+        ax.matshow(correlation_table, 
+                    fignum=False, 
+                    aspect='equal')
+        columns = len(resulting_df.columns)
+        ax.xticks(range(columns), resulting_df.columns)
+        ax.yticks(range(columns), resulting_df.columns)
+        ax.colorbar()
+        ax.xticks(rotation=90)
+        if estimator:
+            ax.title(f'Correlation plots of {estimator} of generational {statistic}', y=1.2)
+        elif bootsrapped_dist:
+            ax.title(f'Correlation plots of bootstrapped (n={n_boot}) generational {statistic}', y=1.2)
+        else:
+            ax.title(f'Correlation plots of full generational {statistic} distribution', y=1.2)
+        fig.canvas.draw()
+        data2 = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        data2 = data2.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        data2 = Image.fromarray(data2.astype('uint8')).convert('RGBA')
+        data2 = encode_image(data2)
+        correlations_img_array += [data2]
+        plt.close(fig)
+
+        correlations_table_array += [correlation_table]        
+
+    return pairplots_img_array, correlations_img_array, correlation_tables_array
+
+def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
+    if not validate_statistic_list(statistics):
+        raise InvalidAPIUsage(f'Please specify a set of valid statistics to plot as query string', status_code=404)
+
+    if not validate_indicator_list(indicators):
+        raise InvalidAPIUsage(f'Please specify a set of valid indicators to plot as query string', status_code=404)
+
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+
+    pop_prefix = ''
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child']:
+        pop_prefix = population_type + '_'
+    
+    if pop_prefix != '':
+        for j, indicator in enumerate(indicators):
+            if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+                indicators[j] = pop_prefix + indicator
+    
+    estimator_func = None
+    if estimator is not None and estimator in STATISTICS:
+        if estimator == "best":
+            estimator_func = np.max
+        elif estimator == "worst":
+            estimator_func = np.min
+        elif estimator == "average":
+            estimator_func = np.mean
+        elif estimator == "std":
+            estimator_func = np.std
+        elif estimator == "median":
+            estimator_func = np.median
+    elif estimator is not None and estimator not in STATISTICS: 
+        raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
+
+    run_ids = []
+    exp_run_mapping = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids += experiment_runs["run_id"]
+        exp_run_mapping[experiment_name] = len(experiment_runs["run_id"])
+
+    if len(indicators) < len(INDICATOR_STATS_SET):
+        all_experiments_stats= dal.get_experiment_indicators_stats(run_ids, indicators)
+    else:
+        indicators = INDICATOR_STATS_SET
+        all_experiments_stats= dal.get_experiment_stats(run_ids)
+    if not all_experiments_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+    all_experiments_stats = pd.DataFrame(all_experiments_stats)
+    
+    array_of_img_arrays = []
+    for indicator in indicators:
+        img_array = []
+        for statistic in statistics:
+            df_list = []
+            for experiment_name in experiment_names:
+                df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
+                if estimator_func:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    est = estimator_func(run_statistic_mat, axis=0)
+                    processed_data = est.tolist()
+                elif bootsrapped_dist:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    b = boot_dist(run_statistic_mat, n_boot=n_boot)
+                    processed_data = b.flatten().tolist()
+                else:
+                    processed_data = df[statistic].tolist()
+
+                df_entry = {}
+                df_entry[statistic] = processed_data
+                df_entry = pd.DataFrame(df_entry)
+                df_entry['experiment'] = experiment_name
+                df_list += [df_entry]
+        
+            resulting_df =  pd.concat(df_list, ignore_index=True)
+            resulting_df[indicator] = resulting_df[statistic]
+
+            sns.set(style="darkgrid")
+            fig, ax = plt.subplots(ncols=1, sharey=True)
+            # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
+            g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator)
+            if estimator:
+                g.set(title=f'Boxplot of {estimator} of generational {indicator} {statistic}')
+            elif bootsrapped_dist:
+                g.set(title=f'Boxplot of bootstrapped (n={n_boot}) generational {indicator} {statistic}')
+            else:
+                g.set(title=f'Boxplot of full generational {indicator} {statistic} distribution')
+
+            fig.canvas.draw()
+            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+            plt.close(fig)
+        array_of_img_arrays.append(img_array)
+    return array_of_img_arrays
+
+def IndicatorViolinPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
+    if not validate_statistic_list(statistics):
+        raise InvalidAPIUsage(f'Please specify a set of valid statistics to plot as query string', status_code=404)
+
+    if not validate_indicator_list(indicators):
+        raise InvalidAPIUsage(f'Please specify a set of valid indicators to plot as query string', status_code=404)
+
+    if experiment_names is None: 
+        raise InvalidAPIUsage(f'Please specify a set of experiments to plot as query string', status_code=404)
+
+    pop_prefix = ''
+    if population_type and population_type not in ['parent', 'child']:
+        raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
+    elif population_type and population_type in ['parent', 'child']:
+        pop_prefix = population_type + '_'
+    
+    if pop_prefix != '':
+        for j, indicator in enumerate(indicators):
+            if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
+                indicators[j] = pop_prefix + indicator
+    
+    estimator_func = None
+    if estimator is not None and estimator in STATISTICS:
+        if estimator == "best":
+            estimator_func = np.max
+        elif estimator == "worst":
+            estimator_func = np.min
+        elif estimator == "average":
+            estimator_func = np.mean
+        elif estimator == "std":
+            estimator_func = np.std
+        elif estimator == "median":
+            estimator_func = np.median
+    elif estimator is not None and estimator not in STATISTICS: 
+        raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
+
+    run_ids = []
+    exp_run_mapping = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids += experiment_runs["run_id"]
+        exp_run_mapping[experiment_name] = len(experiment_runs["run_id"])
+
+    if len(indicators) < len(INDICATOR_STATS_SET):
+        all_experiments_stats= dal.get_experiment_indicators_stats(run_ids, indicators)
+    else:
+        indicators = INDICATOR_STATS_SET
+        all_experiments_stats= dal.get_experiment_stats(run_ids)
+    if not all_experiments_stats["best"]:
+        raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+    all_experiments_stats = pd.DataFrame(all_experiments_stats)
+    
+    array_of_img_arrays = []
+    for indicator in indicators:
+        img_array = []
+        for statistic in statistics:
+            df_list = []
+            for experiment_name in experiment_names:
+                df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
+                if estimator_func:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    est = estimator_func(run_statistic_mat, axis=0)
+                    processed_data = est.tolist()
+                elif bootsrapped_dist:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    b = boot_dist(run_statistic_mat, n_boot=n_boot)
+                    processed_data = b.flatten().tolist()
+                else:
+                    processed_data = df[statistic].tolist()
+
+                df_entry = {}
+                df_entry[statistic] = processed_data
+                df_entry = pd.DataFrame(df_entry)
+                df_entry['experiment'] = experiment_name
+                df_list += [df_entry]
+        
+            resulting_df =  pd.concat(df_list, ignore_index=True)
+            resulting_df[indicator] = resulting_df[statistic]
+            
+            sns.set(style="darkgrid")
+            fig, ax = plt.subplots(ncols=1, sharey=True)
+            # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
+            g = sns.violinplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator, aspect=1.5)
+            if estimator:
+                g.set(title=f'Violinplot of {estimator} of generational {indicator} {statistic}')
+            elif bootsrapped_dist:
+                g.set(title=f'Violinplot of bootstrapped (n={n_boot}) generational {indicator} {statistic}')
+            else:
+                g.set(title=f'Violinplot of full generational {indicator} {statistic} distribution')
+
+            fig.canvas.draw()
+            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+            plt.close(fig)
+        array_of_img_arrays.append(img_array)
+    return array_of_img_arrays
+
 
 def IndicatorKdePlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
     if not validate_statistic_list(statistics):
@@ -548,7 +784,8 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             resulting_df[indicator] = resulting_df[statistic]
 
             sns.set(style="darkgrid")
-            g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
+            # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
+            g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kde=True, height=5, aspect=1.5)
             if estimator:
                 g.set(title=f'KDE plot of {estimator} of generational {indicator} {statistic}')
             elif bootsrapped_dist:
@@ -565,6 +802,97 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             plt.close(g.figure)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
+
+def ArchivePlots(archive, indicator, statistic, experiment_names):
+    indicator2Indx = {"fitness" : 2, "unaligned_novelty" : 3, "aligned_novelty" : 4}
+
+    if archive not in ARCHIVES:
+        raise InvalidAPIUsage(f'No {archive} archive exists!', status_code=404)
+    if statistic not in STATISTICS:
+        raise InvalidAPIUsage(f'No {statistic} statistic exists!', status_code=404)
+
+    run_ids = {}
+    experiment_parameters = {}
+    for experiment_name in experiment_names:
+        experiment_obj = dal.get_experiment(experiment_name)
+        if not experiment_obj:
+            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
+        experiment_parameters[experiment_name] = experiment_obj['parameters']
+        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
+        if not experiment_runs["run_id"]:
+            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
+        run_ids[experiment_name] = experiment_runs["run_id"]
+    
+    experiment_archives = {}
+    for experiment_name in experiment_names:
+        run_archive = dal.get_archives_json(run_ids[experiment_name])
+        if not run_archive["archives_json"]:
+            raise InvalidAPIUsage(f'No archive data from runs available for {experiment_name} experiment!', status_code=404)
+        if archive not in run_archive["archives_json"][0]:
+            raise InvalidAPIUsage(f'No archive {archive} exists!', status_code=404)
+        experiment_archives[experiment_name] = [archive_json[archive] for archive_json in run_archive["archives_json"]]
+        
+        for i in range(len(experiment_archives[experiment_name])):
+            processed_archive = []
+            run_archive = experiment_archives[experiment_name][i]
+            for elem in run_archive:
+                if type(elem) is list:
+                    processed_archive += [elem[indicator2Indx[indicator]]]
+                else:
+                    processed_archive += [0.]
+            experiment_archives[experiment_name][i] = processed_archive
+        experiment_archives[experiment_name] = np.array(experiment_archives[experiment_name])
+    
+    
+    img_array = []
+    for experiment_name in experiment_names:
+        
+        if statistic == "best":
+            flattened_feat_map = np.max(experiment_archives[experiment_name], axis = 0)
+        elif statistic == "worst":
+            flattened_feat_map = np.min(experiment_archives[experiment_name], axis = 0)
+        elif statistic == "average":
+            flattened_feat_map = np.mean(experiment_archives[experiment_name], axis = 0)
+        elif statistic == "std":
+            flattened_feat_map = np.std(experiment_archives[experiment_name], axis = 0)
+        elif statistic == "median":
+            flattened_feat_map = np.median(experiment_archives[experiment_name], axis = 0)
+
+        parameters = experiment_parameters[experiment_name]
+        total_voxels = 1
+        for voxel in parameters["IND_SIZE"]:
+            total_voxels *= voxel
+        if archive[:4] == "f_me":
+            x_points = parameters["me_evaluator"]["bpd"][0]
+            y_points = parameters["me_evaluator"]["bpd"][1]
+        elif archive[:5] == "an_me":
+            x_points = parameters["an_me_evaluator"]["bpd"][0]
+            y_points = parameters["an_me_evaluator"]["bpd"][1]
+
+        feats = [list(np.linspace(0, total_voxels, x_points)), list(np.linspace(0, total_voxels, y_points))]
+        bc_space = []
+        for element in itertools.product(*feats):
+            bc_space += [list(element)]
+        bc_space = np.array(bc_space)
+
+        xreg = np.linspace(0, total_voxels, total_voxels)
+        yreg = np.linspace(0, total_voxels, total_voxels)
+        X,Y = np.meshgrid(xreg,yreg)
+        fig, (ax) = plt.subplots(ncols=1, sharey=True)
+        ax.set_xlabel('Active Voxels')
+        ax.set_ylabel('Passive Voxels')
+        ax.set_title(f"{indicator} {statistic} feature map for {experiment_name} experiment")
+
+        x, y, z = bc_space[:,0], bc_space[:,1], flattened_feat_map
+        Z = spinterp.griddata(np.vstack((x,y)).T,z,(X,Y),
+                      method='linear').reshape(X.shape)
+        col = ax.pcolormesh(X,Y,Z.T)
+        fig.colorbar(col, ax=ax, location='right')
+        fig.canvas.draw()
+        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+    return img_array
 
 def ChooseWinner(indicators, statistic, population_type, experiment_names):
     if not validate_statistic_list([statistic]):
@@ -694,22 +1022,22 @@ def IndicatorPairPlotsRenderGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
+        paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
         else:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
         else:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
-    return "".join([f'<img src="data:image/png;base64,{img}">' for img in img_array])
+    return "<br>".join([f'<img src="data:image/png;base64,{pairplot_img}">' + f'<img src="data:image/png;base64,{corr_img_array}">' for pairplot_img, corr_img in zip(paiplot_img_array, corr_img_array)])
 
 @app.route("/IndicatorPairPlots/mode/<mode>", methods = ["GET"])
 def IndicatorPairPlotsGET(mode):
@@ -721,26 +1049,26 @@ def IndicatorPairPlotsGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
+        paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
         else:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
         else:
-            img_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     return jsonify({
             'msg': 'success', 
-            'size': [[img.width, img.height] for img in img_array], 
-            'format': img_array[0].format,
-            'img': img_array
+            'pairplot_imgs': paiplot_img_array,
+            'corr_imgs' : corr_img_array,
+            'corr_tables' : corr_table_array
         })
 
 @app.route("/IndicatorJointKdePlotRender/indicator1/<indicator1>/indicator2/<indicator2>/mode/<mode>", methods = ["GET"])
@@ -795,8 +1123,6 @@ def IndicatorJointKdePlotGET(indicator1, indicator2, mode):
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     return jsonify({
             'msg': 'success', 
-            'size': [[img.width, img.height] for img in img_array], 
-            'format': img_array[0].format,
             'img': img_array
         })
 
@@ -854,9 +1180,125 @@ def IndicatorKdePlotsGET(mode):
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     return jsonify({
             'msg': 'success', 
+            'img': array_of_img_arrays
+        })
+
+@app.route("/IndicatorBoxPlotsRender/mode/<mode>", methods = ["GET"])
+def IndicatorBoxPlotsRenderGET(mode):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    statistic_list = args.getlist('statistics')
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    if mode == 'full':
+        array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
+
+@app.route("/IndicatorBoxPlots/mode/<mode>", methods = ["GET"])
+def IndicatorBoxPlotsGET(mode):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    statistic_list = args.getlist('statistics')
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    if mode == 'full':
+        array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    return jsonify({
+            'msg': 'success', 
             'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
             'format': array_of_img_arrays[0][0].format,
-            'img': array_of_img_arrays
+            'img': [[encode_image(img) for img in img_array] for img_array in array_of_img_arrays]
+        })
+
+@app.route("/IndicatorViolinPlotsRender/mode/<mode>", methods = ["GET"])
+def IndicatorViolinPlotsRenderGET(mode):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    statistic_list = args.getlist('statistics')
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    if mode == 'full':
+        array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
+
+@app.route("/IndicatorViolinPlots/mode/<mode>", methods = ["GET"])
+def IndicatorViolinPlotsGET(mode):
+    args = request.args
+    population_type = args.get('population')
+    experiment_names = args.getlist('experiments')
+    indicator_list = args.getlist('indicators')
+    statistic_list = args.getlist('statistics')
+    indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
+    statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    if mode == 'full':
+        array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names)
+    elif mode == 'bootstrap_dist':
+        n_boot = args.get('n_boot')
+        if n_boot:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot)
+        else:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True)
+    elif mode == 'est':
+        estimator = args.get('estimator')
+        if estimator:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator)
+        else:
+            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
+    else:
+        raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    return jsonify({
+            'msg': 'success', 
+            'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
+            'format': array_of_img_arrays[0][0].format,
+            'img': [[encode_image(img) for img in img_array] for img_array in array_of_img_arrays]
         })
 
 @app.route("/IndicatorBsConvergencePlotsRender/n_boot/<n_boot>", methods = ["GET"])
@@ -985,100 +1427,24 @@ def AllPlotRunRenderGET(experiment_name, run_number, statistic):
 
     return "".join([f'<img src="data:image/png;base64,{encode_image(img)}"><br>' for img in img_array])
 
-@app.route("/ArchivesPlotRender/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
-def ArchivesPlotRenderGET(archive, indicator, statistic):
+@app.route("/ArchivePlotsRender/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def ArchivePlotsRenderGET(archive, indicator, statistic):
     args = request.args
     experiment_names = args.getlist('experiments')
-    indicator2Indx = {"fitness" : 2, "unaligned_novelty" : 3, "aligned_novelty" : 4}
-
-    if archive not in ARCHIVES:
-        raise InvalidAPIUsage(f'No {archive} archive exists!', status_code=404)
-    if statistic not in STATISTICS:
-        raise InvalidAPIUsage(f'No {statistic} statistic exists!', status_code=404)
-
-    run_ids = {}
-    experiment_parameters = {}
-    for experiment_name in experiment_names:
-        experiment_obj = dal.get_experiment(experiment_name)
-        if not experiment_obj:
-            raise InvalidAPIUsage(f'No experiment named {experiment_name} exists!', status_code=404)
-        experiment_parameters[experiment_name] = experiment_obj['parameters']
-        experiment_runs = dal.get_experiment_runs(experiment_obj["experiment_id"])
-        if not experiment_runs["run_id"]:
-            raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
-        run_ids[experiment_name] = experiment_runs["run_id"]
-    
-    experiment_archives = {}
-    for experiment_name in experiment_names:
-        run_archive = dal.get_archives_json(run_ids[experiment_name])
-        if not run_archive["archives_json"]:
-            raise InvalidAPIUsage(f'No archive data from runs available for {experiment_name} experiment!', status_code=404)
-        if archive not in run_archive["archives_json"][0]:
-            raise InvalidAPIUsage(f'No archive {archive} exists!', status_code=404)
-        experiment_archives[experiment_name] = [archive_json[archive] for archive_json in run_archive["archives_json"]]
-        
-        for i in range(len(experiment_archives[experiment_name])):
-            processed_archive = []
-            run_archive = experiment_archives[experiment_name][i]
-            for elem in run_archive:
-                if type(elem) is list:
-                    processed_archive += [elem[indicator2Indx[indicator]]]
-                else:
-                    processed_archive += [0.]
-            experiment_archives[experiment_name][i] = processed_archive
-        experiment_archives[experiment_name] = np.array(experiment_archives[experiment_name])
-    
-    
-    img_array = []
-    for experiment_name in experiment_names:
-        
-        if statistic == "best":
-            flattened_feat_map = np.max(experiment_archives[experiment_name], axis = 0)
-        elif statistic == "worst":
-            flattened_feat_map = np.min(experiment_archives[experiment_name], axis = 0)
-        elif statistic == "average":
-            flattened_feat_map = np.mean(experiment_archives[experiment_name], axis = 0)
-        elif statistic == "std":
-            flattened_feat_map = np.std(experiment_archives[experiment_name], axis = 0)
-        elif statistic == "median":
-            flattened_feat_map = np.median(experiment_archives[experiment_name], axis = 0)
-
-        parameters = experiment_parameters[experiment_name]
-        total_voxels = 1
-        for voxel in parameters["IND_SIZE"]:
-            total_voxels *= voxel
-        if archive[:4] == "f_me":
-            x_points = parameters["me_evaluator"]["bpd"][0]
-            y_points = parameters["me_evaluator"]["bpd"][1]
-        elif archive[:5] == "an_me":
-            x_points = parameters["an_me_evaluator"]["bpd"][0]
-            y_points = parameters["an_me_evaluator"]["bpd"][1]
-
-        feats = [list(np.linspace(0, total_voxels, x_points)), list(np.linspace(0, total_voxels, y_points))]
-        bc_space = []
-        for element in itertools.product(*feats):
-            bc_space += [list(element)]
-        bc_space = np.array(bc_space)
-
-        xreg = np.linspace(0, total_voxels, total_voxels)
-        yreg = np.linspace(0, total_voxels, total_voxels)
-        X,Y = np.meshgrid(xreg,yreg)
-        fig, (ax) = plt.subplots(ncols=1, sharey=True)
-        ax.set_xlabel('Active Voxels')
-        ax.set_ylabel('Passive Voxels')
-        ax.set_title(f"{indicator} {statistic} feature map for {experiment_name} experiment")
-
-        x, y, z = bc_space[:,0], bc_space[:,1], flattened_feat_map
-        Z = spinterp.griddata(np.vstack((x,y)).T,z,(X,Y),
-                      method='linear').reshape(X.shape)
-        col = ax.pcolormesh(X,Y,Z.T)
-        fig.colorbar(col, ax=ax, location='right')
-        fig.canvas.draw()
-        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
-    
+    img_array = ArchivePlots(archive, indicator, statistic, experiment_names)
     return "".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array])
+
+@app.route("/ArchivePlotsRender/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def ArchivePlotsGET(archive, indicator, statistic):
+    args = request.args
+    experiment_names = args.getlist('experiments')
+    img_array = ArchivePlots(archive, indicator, statistic, experiment_names)
+    return jsonify({
+        'msg': 'success', 
+        'size': [[img.width, img.height] for img in img_array], 
+        'format': img_array[0].format,
+        'img': [encode_image(img) for img in img_array]
+    })
 
 @app.route("/ChooseWinner/statistic/<statistic>", methods = ["GET"])
 def ChooseWinnerGET(statistic):
