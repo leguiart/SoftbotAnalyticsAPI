@@ -5,6 +5,7 @@ import io
 import base64
 import pandas as pd
 import seaborn as sns
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.interpolate as spinterp
 
@@ -445,7 +446,7 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
             new_df['experiment'] = experiment_name
             df_list += [new_df]
         
-        resulting_df =  pd.concat(df_list, ignore_index=True)
+        resulting_df = pd.concat(df_list, ignore_index=True)
         sns.set(style="darkgrid")
         g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
         g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
@@ -463,32 +464,47 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         data1 = base64.b64encode(data1).decode()
         pairplots_img_array += [data1]  
         plt.close(g.figure)
+        corr_imgs = []
+        corr_tables = []
+        for experiment_name in experiment_names:
+            experiment_indicator_data = resulting_df[resulting_df['experiment'] == experiment_name]
 
-        fig,ax = plt.subplots(ncols=1)
-        correlation_table = resulting_df.corr()
-        ax.matshow(correlation_table, 
-                    fignum=False, 
-                    aspect='equal')
-        columns = len(resulting_df.columns)
-        ax.xticks(range(columns), resulting_df.columns)
-        ax.yticks(range(columns), resulting_df.columns)
-        ax.colorbar()
-        ax.xticks(rotation=90)
-        if estimator:
-            ax.title(f'Correlation plots of {estimator} of generational {statistic}', y=1.2)
-        elif bootsrapped_dist:
-            ax.title(f'Correlation plots of bootstrapped (n={n_boot}) generational {statistic}', y=1.2)
-        else:
-            ax.title(f'Correlation plots of full generational {statistic} distribution', y=1.2)
-        fig.canvas.draw()
-        data2 = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        data2 = data2.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        data2 = Image.fromarray(data2.astype('uint8')).convert('RGBA')
-        data2 = encode_image(data2)
-        correlations_img_array += [data2]
-        plt.close(fig)
+            fig,ax = plt.subplots()
+            ax.grid(visible = False)
+            cmap = mpl.colormaps['viridis']
+            norm = mpl.colors.Normalize()
+            correlation_table = experiment_indicator_data.corr()
+            ax.imshow(correlation_table,norm=norm, cmap=cmap)
+            columns_count = len(indicators)
+            ax.set_xticks(range(columns_count), indicators, rotation=90)
+            ax.set_yticks(range(columns_count), indicators)
 
-        correlations_table_array += [correlation_table]        
+            # Loop over data dimensions and create text annotations.
+            for i in range(len(indicators)):
+                for j in range(len(indicators)):
+                    text = ax.text(j, i,  "{:.4f}".format(correlation_table.iloc[i, j]),
+                                ha="center", va="center", color="w")
+
+            fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
+            # ax.xticks(rotation=90)
+            if estimator:
+                ax.set(title=f'{experiment_name} correlations of {estimator} of generational {statistic}')
+            elif bootsrapped_dist:
+                ax.set(title=f'{experiment_name} correlations of bootstrapped (n={n_boot}) generational {statistic}')
+            else:
+                ax.set(title=f'{experiment_name} correlationns of full generational {statistic} distribution')
+            fig.tight_layout()
+            fig.canvas.draw()
+            data2 = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            data2 = data2.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            data2 = Image.fromarray(data2.astype('uint8')).convert('RGBA')
+            data2 = encode_image(data2)
+            corr_imgs += [data2]
+            plt.close(fig)
+            corr_tables += [correlation_table.to_numpy().tolist()]
+
+        correlations_img_array.append(corr_imgs)
+        correlation_tables_array.append(corr_tables)
 
     return pairplots_img_array, correlations_img_array, correlation_tables_array
 
@@ -697,7 +713,6 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             plt.close(fig)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
-
 
 def IndicatorKdePlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000):
     if not validate_statistic_list(statistics):
@@ -939,30 +954,40 @@ def ChooseWinner(indicators, statistic, population_type, experiment_names):
     indicator_algo_scores = dict(zip(indicators, [{exp : 0 for exp in experiment_names} for _ in indicators]))
     condorcet_scores = dict(zip(experiment_names, [{exp : 0 for exp in experiment_names} for _ in experiment_names]))
     permutation_counts = {}
+    indicator_algo_tables = {}
     for indicator in indicators:
+        indicator_algo_tables[indicator] = {}
         for i in range(len(experiment_names)):
             algo1 = experiment_names[i]
             df1 = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == algo1)]
             data1 = df1[statistic].to_numpy()
             mu1 = data1.mean()
-            # sigma1 = data1.std()
+            sigma1 = data1.std()
+            indicator_algo_tables[indicator][algo1] = ((mu1, sigma1), {})
             for j in range(i + 1, len(experiment_names)):
                 algo2 = experiment_names[j]
                 df2 = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == algo2)]
                 data2 = df2[statistic].to_numpy()
                 mu2 = data2.mean()
-                # sigma2 = data2.std()
+                sigma2 = data2.std()
                 res = stats.wilcoxon(data1, y = data2, correction=True)
                 if res.pvalue < alpha:
                     # significantly different
                     if mu1 > mu2:
+                        # algo1 is superior to algo2 in regards to indicator
                         condorcet_scores[algo1][algo2] += 1
                         indicator_algo_scores[indicator][algo1]+=1
                         indicator_algo_scores[indicator][algo2]-=1
+                        indicator_algo_tables[indicator][algo1][1][algo2] = (mu2, sigma2, res.pvalue, 2)
                     else:
+                        # algo2 is superior to algo1 in regards to indicator
                         condorcet_scores[algo2][algo1] += 1
                         indicator_algo_scores[indicator][algo1]-=1
                         indicator_algo_scores[indicator][algo2]+=1
+                        indicator_algo_tables[indicator][algo1][1][algo2] = (mu2, sigma2, res.pvalue, 1)
+                else:
+                    # couldn't reject null hypothesis
+                    indicator_algo_tables[indicator][algo1][1][algo2] = (mu2, sigma2, res.pvalue, 0)
         # We now sort the algos based on their results for the current indicator
         sorted_algos = dict(sorted(indicator_algo_scores[indicator].items(), key = lambda x : x[1], reverse=True))
         permutation = tuple(sorted_algos.keys())
@@ -987,7 +1012,7 @@ def ChooseWinner(indicators, statistic, population_type, experiment_names):
 
     borda_count = dict(sorted(borda_count.items(), key = lambda x : x[1], reverse=True))
 
-    return condorcet_scores, borda_count, places_count, {",".join(perm) : count for perm, count in permutation_counts.items()}, indicator_algo_scores
+    return condorcet_scores, borda_count, places_count, {",".join(perm) : count for perm, count in permutation_counts.items()}, indicator_algo_scores, indicator_algo_tables
 
 class InvalidAPIUsage(Exception):
     status_code = 400
@@ -1037,7 +1062,7 @@ def IndicatorPairPlotsRenderGET(mode):
             paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average')
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
-    return "<br>".join([f'<img src="data:image/png;base64,{pairplot_img}">' + f'<img src="data:image/png;base64,{corr_img_array}">' for pairplot_img, corr_img in zip(paiplot_img_array, corr_img_array)])
+    return "<br>".join([f'<img src="data:image/png;base64,{pairplot_img}">' + "".join([f'<img src="data:image/png;base64,{corr_img}">' for corr_img in corr_imgs]) for pairplot_img, corr_imgs in zip(paiplot_img_array, corr_img_array)])
 
 @app.route("/IndicatorPairPlots/mode/<mode>", methods = ["GET"])
 def IndicatorPairPlotsGET(mode):
@@ -1453,14 +1478,15 @@ def ChooseWinnerGET(statistic):
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     indicator_list = WINNING_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
-    condorcet_scores, borda_count, places_count, permutation_counts, indicator_algo_scores = ChooseWinner(indicator_list, statistic, population_type, experiment_names)
+    condorcet_scores, borda_count, places_count, permutation_counts, indicator_algo_scores, indicator_algo_tables = ChooseWinner(indicator_list, statistic, population_type, experiment_names)
     return jsonify({
             'msg': 'success', 
             'condorcet_scores' : condorcet_scores,
             'borda_count': borda_count, 
             'places_count': places_count,
             'permutation_counts': permutation_counts,
-            'indicator_algo_scores': indicator_algo_scores
+            'indicator_algo_scores': indicator_algo_scores,
+            'indicator_algo_tables': indicator_algo_tables
         })
 
 if __name__ == '__main__':
