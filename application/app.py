@@ -120,6 +120,16 @@ WINNING_INDICATORS = [
             "qd-score_anan",
             "coverage"]
 
+NO_STD_INDICATORS = [
+    "qd-score_ff",
+    "qd-score_fun",
+    "qd-score_fan",
+    "qd-score_anf",
+    "qd-score_anun",
+    "qd-score_anan",
+    "coverage"]
+
+
 ARCHIVES = ["f_me_archive",
             "an_me_archive",
             "novelty_archive_un",
@@ -503,6 +513,8 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         for experiment_name in experiment_names:
             new_df = {}
             for indicator in indicators:
+                if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                    continue
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
                 if estimator_func:
                     run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
@@ -648,6 +660,8 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
     for indicator in indicators:
         img_array = []
         for statistic in statistics:
+            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                continue
             df_list = []
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
@@ -754,6 +768,8 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
     for indicator in indicators:
         img_array = []
         for statistic in statistics:
+            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                continue
             df_list = []
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
@@ -860,6 +876,8 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
     for indicator in indicators:
         img_array = []
         for statistic in statistics:
+            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                continue
             df_list = []
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
