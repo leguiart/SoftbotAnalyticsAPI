@@ -66,6 +66,81 @@ INDICATOR_STATS_SET = [
             "simplified_gene_ne_div",
             "simplified_gene_nws_div"]
 
+def to_math_font(font, word, accent = '', suff = None):
+    math_text = r"$" + accent + font + r"{" + word + r"}"
+    if suff:
+        math_text += r"^{suff}".format(suff = suff)
+    math_text += r"$"
+    return math_text
+
+def to_math_it(word, accent = '', suff = None):
+    return to_math_font(r"\mathit", word, accent=accent, suff=suff)
+
+def to_math_cal(word, accent = '', suff = None):
+    return to_math_font(r"\mathcal", word, accent=accent, suff=suff)
+
+def to_math_bf(word, accent = '', suff = None):
+    return to_math_font(r"\mathbf", word, accent=accent, suff=suff)
+
+
+def to_math_frak(word, accent = '', suff = None):
+    return to_math_font(r"\mathfrak", word, accent=accent, suff=suff)
+
+def to_math_tt(word, accent = '', suff = None):
+    return to_math_font(r"\mathtt", word, accent=accent, suff=suff)
+
+def to_math_bb(word, accent = '', suff = None):
+    return to_math_font(r"\mathbb", word, accent=accent, suff=suff)
+
+def to_math_rm(word, accent = '', suff = None):
+    return to_math_font(r"\mathrm", word, accent=accent, suff=suff)
+
+def compactify_indicator(indicator):
+    if any(prefix in indicator for prefix in ['parent', 'child']):
+        subscript = indicator[0]
+        suffix = "_".join(indicator.split('_')[1:])
+    else:
+        subscript = None
+        suffix = indicator
+    func = INDICATORS_TO_COMPACT[suffix][0]
+    text = INDICATORS_TO_COMPACT[suffix][1]
+    indicator_compact = func(text, suff=subscript)
+    return indicator_compact
+
+
+INDICATORS_TO_COMPACT = KeyDict(dict, 
+            {"fitness" : (to_math_it, 'F'),
+            "morphology" : (to_math_it, 'M'),
+            "unaligned_novelty" : (to_math_it, 'N_u'),
+            "aligned_novelty" : (to_math_it, 'N_a'), 
+            "gene_diversity" : (to_math_it, 'D_g'),
+            "control_gene_div" : (to_math_it, r'D_{gc}'),
+            "morpho_gene_div" : (to_math_it, r'D_{gm}'),
+            "morpho_div" : (to_math_it, 'D_m'),
+            "endpoint_div" : (to_math_it, 'D_e'),
+            "morphology_active" : (to_math_it, 'M_a'),
+            "morphology_passive" : (to_math_it, 'M_p'),
+            "unaligned_novelty_archive_fit" : (to_math_tt, 'F_u'),
+            "aligned_novelty_archive_fit" : (to_math_tt, 'F_a'),
+            "unaligned_novelty_archive_novelty" : (to_math_tt, 'N_u'),
+            "aligned_novelty_archive_novelty" : (to_math_tt, 'N_a'),
+            "qd-score_ff" : (to_math_tt, r'Q_{ff}'),
+            "qd-score_fun" : (to_math_tt, r'Q_{fun}'),
+            "qd-score_fan" : (to_math_tt, r'Q_{fan}'),
+            "qd-score_anf" : (to_math_tt, r'Q_{anf}'),
+            "qd-score_anun" : (to_math_tt, r'Q_{anun}'),
+            "qd-score_anan" : (to_math_tt, r'Q_{anan}'),
+            "coverage" : (to_math_cal, "C"),            
+            "control_cppn_nodes" : (to_math_rm, "C-CPPN_n"),
+            "control_cppn_edges" : (to_math_rm, "C-CPPN_e"),
+            "control_cppn_ws" : (to_math_rm, "C-CPPN_w"),
+            "morpho_cppn_nodes" : (to_math_rm, "M-CPPN_n"),
+            "morpho_cppn_edges" : (to_math_rm, "M-CPPN_e"),
+            "morpho_cppn_ws" : (to_math_rm, "M-CPPN_w"),
+            "simplified_gene_div" : (to_math_it, r"D_{gs}"),
+            "simplified_gene_ne_div" : (to_math_it, r"D_{gcs}"),
+            "simplified_gene_nws_div" : (to_math_it, r"D_{gms}")})
+
 PLOT_INDICATORS = [
             "fitness",
             "morphology",
@@ -128,7 +203,6 @@ NO_STD_INDICATORS = [
     "qd-score_anun",
     "qd-score_anan",
     "coverage"]
-
 
 ARCHIVES = ["f_me_archive",
             "an_me_archive",
@@ -198,6 +272,11 @@ LANG_DICTS = {
 app = Flask(__name__)
 CORS(app)
 dal = Dal()
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     "font.family": "sans-serif",
+#     "font.sans-serif": "Helvetica",
+# })
 
 def encode_image(img : Image):
     buffer = io.BytesIO()
@@ -318,8 +397,11 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
 
     array_of_img_arrays = []
     for indicator in indicators:
+        indicator_compact = compactify_indicator(indicator)
         img_array = []
         for statistic in statistics:
+            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                continue
             fig, ax = plt.subplots(ncols=1, sharey=True)
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
@@ -329,12 +411,12 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
                     ax.legend()
                 else:
                     tsplotboot(ax, run_statistic_mat, n_boot = n_boot, ci=95)
-            ax.set_ylabel(f"{lang_dict[indicator]}({lang_dict[statistic]})")
+            ax.set_ylabel(f"{indicator_compact} ({lang_dict[statistic]})")
             ax.set_xlabel(lang_dict["Generation"])
             if len(experiment_names) > 1:
-                ax.set_title(f"{lang_dict[indicator]}({lang_dict[statistic]}), bootstrapping n={n_boot}")
+                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}")
             else:
-                ax.set_title(f"{lang_dict[indicator]}({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}")
+                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}")
             fig.canvas.draw()
             data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
@@ -505,6 +587,7 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
+    compacted_indicators = [compactify_indicator(indicator) for indicator in indicators]
     pairplots_img_array = []
     correlations_img_array = []
     correlation_tables_array = []
@@ -526,14 +609,14 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
                     processed_data = b.flatten().tolist()
                 else:
                     processed_data = df[statistic].tolist()
-                new_df[indicator] = processed_data
+                new_df[compactify_indicator(indicator)] = processed_data
             new_df = pd.DataFrame(new_df)
             new_df['experiment'] = experiment_name
             df_list += [new_df]
         
         resulting_df = pd.concat(df_list, ignore_index=True)
-        for indicator in indicators:
-            resulting_df[indicator] = resulting_df[indicator].astype('float')
+        for indicator_compact in compacted_indicators:
+            resulting_df[indicator_compact] = resulting_df[indicator_compact].astype('float')
         sns.set(style="darkgrid")
         g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
         g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
@@ -562,25 +645,25 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
             ax.grid(visible = False)
             cmap = mpl.colormaps['viridis']
             norm = mpl.colors.Normalize()
-            ax.imshow(correlation_table,norm=norm, cmap=cmap)
-            columns_count = len(indicators)
-            ax.set_xticks(range(columns_count), indicators, rotation=90)
-            ax.set_yticks(range(columns_count), indicators, rotation=45)
+            pos = ax.imshow(correlation_table,norm=norm, cmap=cmap)
+            columns_count = len(compacted_indicators)
+            ax.set_xticks(range(columns_count), compacted_indicators, rotation=90)
+            ax.set_yticks(range(columns_count), compacted_indicators, rotation=45)
 
             # Loop over data dimensions and create text annotations.
-            for i in range(len(indicators)):
-                for j in range(len(indicators)):
+            for i in range(len(compacted_indicators)):
+                for j in range(len(compacted_indicators)):
                     text = ax.text(j, i,  "{:.4f}".format(correlation_table.iloc[i, j]),
                                 ha="center", va="center", color="w")
 
-            fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
+            fig.colorbar(pos, ax=ax, shrink=0.6, anchor=(0, 0.5))
             # ax.xticks(rotation=90)
             if estimator:
-                ax.set(title=lang_dict["corr_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator], experiment_name = experiment_name))
+                ax.set_title(lang_dict["corr_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator], experiment_name = experiment_name), y=1.)
             elif bootsrapped_dist:
-                ax.set(title=lang_dict["corr_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot], experiment_name = experiment_name))
+                ax.set_title(lang_dict["corr_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot], experiment_name = experiment_name), y=1.)
             else:
-                ax.set(title=lang_dict["corr_title_template_all"].format(statistic=lang_dict[statistic], experiment_name = experiment_name))
+                ax.set(title=lang_dict["corr_title_template_all"].format(statistic=lang_dict[statistic], experiment_name = experiment_name), y=1.)
             fig.tight_layout()
             fig.canvas.draw()
             data2 = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
@@ -659,6 +742,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
     array_of_img_arrays = []
     for indicator in indicators:
         img_array = []
+        indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
                 continue
@@ -683,18 +767,18 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
                 df_list += [df_entry]
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
-            resulting_df[indicator] = resulting_df[statistic].astype('float')
-
+            resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
+            
             sns.set(style="darkgrid")
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
-            g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator)
+            g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
             if estimator:
-                g.set(title=lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator], estimator=lang_dict[estimator]))
+                g.set(title=lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
             elif bootsrapped_dist:
-                g.set(title=lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator], n_boot=lang_dict[n_boot]))
+                g.set(title=lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]))
             else:
-                g.set(title=lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator]))
+                g.set(title=lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
 
             fig.canvas.draw()
             data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
@@ -767,6 +851,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
     array_of_img_arrays = []
     for indicator in indicators:
         img_array = []
+        indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
                 continue
@@ -791,18 +876,18 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
                 df_list += [df_entry]
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
-            resulting_df[indicator] = resulting_df[statistic].astype('float')
+            resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
             sns.set(style="darkgrid")
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
             # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
-            g = sns.violinplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator)
+            g = sns.violinplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
             if estimator:
-                g.set(title=lang_dict["violin_title_template_est"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator], estimator=lang_dict[estimator]))
+                g.set(title=lang_dict["violin_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
             elif bootsrapped_dist:
-                g.set(title=lang_dict["violin_title_template_boot"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator], n_boot=lang_dict[n_boot]))
+                g.set(title=lang_dict["violin_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]))
             else:
-                g.set(title=lang_dict["violin_title_template_all"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator]))
+                g.set(title=lang_dict["violin_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
 
             fig.canvas.draw()
             data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
@@ -875,6 +960,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
     array_of_img_arrays = []
     for indicator in indicators:
         img_array = []
+        indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
                 continue
@@ -899,17 +985,17 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
                 df_list += [df_entry]
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
-            resulting_df[indicator] = resulting_df[statistic].astype('float')
+            resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
 
             sns.set(style="darkgrid")
             # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
-            g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kde=True, height=8, aspect=1.2)
+            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kde=True, height=8, aspect=1.2)
             if estimator:
-                g.set(title=lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator], estimator=lang_dict[estimator]))
+                g.set(title=lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
             elif bootsrapped_dist:
-                g.set(title=lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator], n_boot=lang_dict[n_boot]))
+                g.set(title=lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]))
             else:
-                g.set(title=lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator]))
+                g.set(title=lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
 
             buffer = io.BytesIO()
             g.savefig(buffer, format='png')

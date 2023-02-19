@@ -132,4 +132,7 @@ dmypy.json
 
 database.ini
 /kde_distributions
+/violinplots
+/boxplots
+/convergence_plots
 retrieved_plots.json
