@@ -34,4 +34,8 @@ class SoftbotAnalyticsClient(GenericHttpClient):
     def pairplot_kde(self, mode, indicators, statistics, experiment_names, **kwargs):
         _base_url = os.path.join(self.base_url, 'IndicatorPairPlots')
         return super().generic_get(_base_url, 'mode', mode, indicators=indicators, statistics=statistics, experiments=experiment_names, **kwargs)
+    
+    def structured_archive_plot(self, archive, indicator, statistic, experiment_names, **kwargs):
+        _base_url = os.path.join(self.base_url, 'StructuredArchivePlots')
+        return super().generic_get(_base_url, 'archive', archive, 'indicator', indicator, 'statistic', statistic, experiments=experiment_names, **kwargs)
 

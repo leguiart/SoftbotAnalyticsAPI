@@ -117,7 +117,17 @@ INDICATORS_TO_COMPACT = KeyDict(dict,
             "control_gene_div" : (to_math_it, r'D_{gc}'),
             "morpho_gene_div" : (to_math_it, r'D_{gm}'),
             "morpho_div" : (to_math_it, 'D_m'),
-            "endpoint_div" : (to_math_it, 'D_e'),
+            "endpoint_div" : (to_math_it, r'D_{\vec r(t=T)}'),
+            "trayectory_div" : (to_math_it, r'D_{\vec s}'),
+            "inipoint_x" : (to_math_it, r'\vec r_{x}(t=0)'),
+            "inipoint_y": (to_math_it, r'\vec r_{y}(t=0)'),
+            "inipoint_z": (to_math_it, r'\vec r_{z}(t=0)'),
+            "endpoint_x": (to_math_it, r'\vec r_{x}(t=T)'),
+            "endpoint_y": (to_math_it, r'\vec r_{y}(t=T)'),
+            "endpoint_z": (to_math_it, r'\vec r_{z}(t=T)'),
+            "trayectory_x": (to_math_it, r'(\vec s_{x}'),
+            "trayectory_y": (to_math_it, r'\vec s_{y}'),
+            "trayectory_z": (to_math_it, r'\vec s_{z}'),
             "morphology_active" : (to_math_it, 'M_a'),
             "morphology_passive" : (to_math_it, 'M_p'),
             "unaligned_novelty_archive_fit" : (to_math_tt, 'F_u'),
@@ -477,6 +487,8 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment and/or {indicator1} indicator!', status_code=404)
         
     df = pd.DataFrame(experiment_stats)
+    compact_indicator1 = compactify_indicator(indicator1)
+    compact_indicator2 = compactify_indicator(indicator2)
     img_array = []
     for statistic in statistics:
         df_list = []
@@ -500,7 +512,7 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
             else:
                 processed_data1 = df1[statistic]
                 processed_data2 = df2[statistic]
-            new_df = {indicator1 : processed_data1.astype('float').tolist(), indicator2 : processed_data2.astype('float').tolist()}
+            new_df = {compact_indicator1 : processed_data1.astype('float').tolist(), compact_indicator2 : processed_data2.astype('float').tolist()}
             new_df = pd.DataFrame(new_df)
             new_df['experiment'] = experiment_name
             df_list += [new_df]
@@ -508,7 +520,7 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         resulting_df =  pd.concat(df_list, ignore_index=True)
         # fig,ax = plt.subplots(ncols=1)
         sns.set(style="darkgrid")
-        g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
+        g = sns.jointplot(data=resulting_df, x=compact_indicator1, y=compact_indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
         # g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2,  height=9, ratio=2)
         # g.plot_joint(sns.kdeplot, hue='experiment', zorder=0, levels=20)
         g.plot_marginals(sns.histplot, kde = True)
@@ -1007,7 +1019,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
-def ArchivePlots(archive, indicator, statistic, experiment_names, lang = 'en'):
+def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang = 'en'):
     indicator2Indx = {"fitness" : 2, "unaligned_novelty" : 3, "aligned_novelty" : 4}
     if not lang in LANG_DICTS:
         raise InvalidAPIUsage(f'Please specify a valid language choice as query string', status_code=404)
@@ -1655,20 +1667,20 @@ def AllPlotRunRenderGET(experiment_name, run_number, statistic):
 
     return "".join([f'<img src="data:image/png;base64,{encode_image(img)}"><br>' for img in img_array])
 
-@app.route("/ArchivePlotsRender/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
-def ArchivePlotsRenderGET(archive, indicator, statistic):
+@app.route("/StructuredArchivePlotsRender/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def StructuredArchivePlotsRenderGET(archive, indicator, statistic):
     args = request.args
     experiment_names = args.getlist('experiments')
     lang = parse_lang(args.get('lang'))
-    img_array = ArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
+    img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
     return "".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array])
 
-@app.route("/ArchivePlotsRender/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
-def ArchivePlotsGET(archive, indicator, statistic):
+@app.route("/StructuredArchivePlots/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
+def StructuredArchivePlotsGET(archive, indicator, statistic):
     args = request.args
     experiment_names = args.getlist('experiments')
     lang = parse_lang(args.get('lang'))
-    img_array = ArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
+    img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
     return jsonify({
         'msg': 'success', 
         'size': [[img.width, img.height] for img in img_array], 
