@@ -603,9 +603,10 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
     pairplots_img_array = []
     correlations_img_array = []
     correlation_tables_array = []
-    compacted_indicators = set()
+    
     for statistic in statistics:
         df_list = []
+        compacted_indicators = set()
         for experiment_name in experiment_names:
             new_df = {}
             for indicator in indicators:

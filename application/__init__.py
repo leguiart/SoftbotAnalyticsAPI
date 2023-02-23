@@ -598,12 +598,14 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
-    compacted_indicators = [compactify_indicator(indicator) for indicator in indicators]
+    
     pairplots_img_array = []
     correlations_img_array = []
     correlation_tables_array = []
+    
     for statistic in statistics:
         df_list = []
+        compacted_indicators = set()
         for experiment_name in experiment_names:
             new_df = {}
             for indicator in indicators:
@@ -620,6 +622,7 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
                     processed_data = b.flatten().tolist()
                 else:
                     processed_data = df[statistic].tolist()
+                compacted_indicators.add(compactify_indicator(indicator))
                 new_df[compactify_indicator(indicator)] = processed_data
             new_df = pd.DataFrame(new_df)
             new_df['experiment'] = experiment_name
