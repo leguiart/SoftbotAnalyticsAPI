@@ -29,7 +29,7 @@ class SoftbotAnalyticsClient(GenericHttpClient):
 
     def joint_kde(self, mode, indicator1, indicator2, statistics, experiment_names, **kwargs):
         _base_url = os.path.join(self.base_url, 'IndicatorJointKdePlot')
-        return super().generic_get(_base_url, 'mode', mode, 'indicator1', indicator1, 'indicator2', indicator2, statistics=statistics, experiments=experiment_names, **kwargs)
+        return super().generic_get(_base_url, 'indicator1', indicator1, 'indicator2', indicator2, 'mode', mode, statistics=statistics, experiments=experiment_names, **kwargs)
 
     def pairplot_kde(self, mode, indicators, statistics, experiment_names, **kwargs):
         _base_url = os.path.join(self.base_url, 'IndicatorPairPlots')
