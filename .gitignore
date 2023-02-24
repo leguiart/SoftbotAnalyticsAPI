@@ -135,4 +135,7 @@ database.ini
 /violinplots
 /boxplots
 /convergence_plots
+/s_archive_plots
+/jointkdeplots
+/choose_winners
 retrieved_plots.json
