@@ -6,6 +6,7 @@ from clients.client import GenericHttpClient
 class SoftbotAnalyticsClient(GenericHttpClient):
     def __init__(self, base_url):
         self.base_url = base_url
+        super().__init__(connectTimeout=3600., readTimeout=14000.)
     
     def kde_distributions(self, mode, indicators, statistics, experiment_names, **kwargs):
         kde_base_url = os.path.join(self.base_url, 'IndicatorKdePlots')

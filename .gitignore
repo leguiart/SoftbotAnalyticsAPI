@@ -138,4 +138,6 @@ database.ini
 /s_archive_plots
 /jointkdeplots
 /choose_winners
-retrieved_plots.json
+/pair_plots
+plots_downloader_finish.json
+.vscode

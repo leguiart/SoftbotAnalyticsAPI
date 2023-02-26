@@ -4,14 +4,18 @@ import logging
 import os
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from urllib3.util.timeout import Timeout
 
 logger = logging.getLogger(f"__main__.{__name__}")
 
 class GenericHttpClient:
+
+    def __init__(self, connectTimeout = None, readTimeout = None):
+        self.timeout = Timeout(connect=connectTimeout, read=readTimeout)
     
     def create_session(self):
         session = requests.Session()
-        retry = Retry(backoff_factor=0.5)
+        retry = Retry(backoff_factor=0.5, total=2)
         adapter = HTTPAdapter(max_retries=retry)
         session.mount('http://', adapter)
         session.mount('https://', adapter)
@@ -33,7 +37,7 @@ class GenericHttpClient:
             route = route[:len(route) - 1]
         session = self.create_session()
         logger.info(f'Start GET request {route}')
-        r = session.get(route)
+        r = session.get(route, timeout=self.timeout)
         json_r = r.json()
         logger.info(f'Finish GET request {route}')
         return json_r

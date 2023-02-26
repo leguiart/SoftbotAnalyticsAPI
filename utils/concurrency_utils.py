@@ -26,9 +26,9 @@ def generic_mm_parallel_execution(func_params, desired_parallelism, end_process_
         futures = []
         for func, f_args, f_kwargs in func_params:
             futures += [executor.submit(func, *f_args, **f_kwargs)]
-        for result in as_completed(futures):
+        for future in as_completed(futures):
             print(end_process_msg)
-            results_list += [result]
+            results_list += [future.result()]
     return results_list
 
 def generic_mm_concurrent_execution(func_params, desired_concurrency, end_thread_msg):

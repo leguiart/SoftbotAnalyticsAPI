@@ -30,23 +30,43 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
+# Clasificacion acordada para elegir al ganador
+# TASK_PERFORMANCE_INDICATORS = [
+#     "fitness",
+#     "aligned_novelty",
+#     "unaligned_novelty_archive_fit",
+#     "aligned_novelty_archive_fit",
+#     "qd-score_ff",
+#     "qd-score_fan",
+#     "qd-score_anf",
+#     "qd-score_anan",
+# ]
+# PHENOTYPE_DIVERSITY_INDICATORS = [
+#     "morpho_div",
+#     "unaligned_novelty",
+#     "unaligned_novelty_archive_novelty",
+#     "aligned_novelty_archive_novelty",
+#     "qd-score_fun",
+#     "qd-score_anun",
+#     "coverage", 
+# ]
+# GENE_DIVERSITY_INDICATORS = [
+#     "gene_diversity"
+# ]
+
 class KeyDict(defaultdict):
     def __missing__(self, key):
         return key
 
 STATISTICS = ["best",
-              "worst",
-              "std",
               "median",
               "average"]
 ESTIMATORS = STATISTICS
 MODES = ["bootstrap_dist",
          "est",
          "full"]
-POPULATIONS = ["parent",
-               "child",
-               "default"]
-N_BOOT = [50, 100, 1000]
+POPULATIONS = ["default"]
+N_BOOT = [100, 1000, 2000]
 ARCHIVES = ["f_me_archive",
             "an_me_archive",
             "novelty_archive_un",
@@ -222,7 +242,6 @@ def to_math_cal(word, accent = '', suff = None):
 
 def to_math_bf(word, accent = '', suff = None):
     return to_math_font(r"\mathbf", word, accent=accent, suff=suff)
-
 
 def to_math_frak(word, accent = '', suff = None):
     return to_math_font(r"\mathfrak", word, accent=accent, suff=suff)
@@ -426,7 +445,7 @@ def generate_choosewinner_params(indicators, statistics, experiments, population
     return param_dict
 
 def kde_distributions(img_base_path, base_url, delay, mode, indicators, statistics, experiment_names, **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while(True):
         try:
@@ -483,7 +502,7 @@ def kde_distributions(img_base_path, base_url, delay, mode, indicators, statisti
             }
     
 def boxplots(img_base_path, base_url, delay, mode, indicators, statistics, experiment_names, **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while True:
         try:
@@ -540,7 +559,7 @@ def boxplots(img_base_path, base_url, delay, mode, indicators, statistics, exper
             }
 
 def violinplots(img_base_path, base_url, delay, mode, indicators, statistics, experiment_names, **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while True:
         try:
@@ -597,7 +616,7 @@ def violinplots(img_base_path, base_url, delay, mode, indicators, statistics, ex
             }
     
 def convergence_plots(img_base_path, base_url, delay, indicators, statistics, experiment_names, n_boot='default', **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while True:
         try:
@@ -654,7 +673,7 @@ def convergence_plots(img_base_path, base_url, delay, indicators, statistics, ex
             }
 
 def choose_winner(img_base_path, base_url, delay, statistic, indicators, experiment_names, **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while True:
         try:
@@ -776,7 +795,7 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
             }
 
 def joint_plots(img_base_path, base_url, delay, mode, indicator1, indicator2, statistics, experiment_names, **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while True:
         try:
@@ -824,7 +843,7 @@ def joint_plots(img_base_path, base_url, delay, mode, indicator1, indicator2, st
             }
         
 def pair_plots(img_base_path, base_url, delay, mode, indicators, statistics, experiment_names, **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while True:
         try:
@@ -883,7 +902,7 @@ def pair_plots(img_base_path, base_url, delay, mode, indicators, statistics, exp
             }
     
 def s_archive_plots(img_base_path, base_url, delay, archive, indicator, statistic, experiment_names, **kwargs):
-    retry_count = 10
+    retry_count = 0
     i = 0
     while True:
         try:
@@ -933,9 +952,19 @@ def s_archive_plots(img_base_path, base_url, delay, archive, indicator, statisti
 
 def json_to_func_params(img_base_path, base_url, delay, func_info : dict):
     func_params = []
-    for func_name, func_params_list in func_info.items():
-        func = globals()[func_name]
-        func_params += [(func, [img_base_path, base_url, delay, *args], kwargs) for args, kwargs in func_params_list]
+    func_info_keys = list(func_info.keys())
+    i = 0
+    while func_info_keys:
+        func_name = func_info_keys[i%len(func_info_keys)]
+        func_params_list = func_info[func_name]
+        # func_params += [(func, [img_base_path, base_url, delay, *args], kwargs) for args, kwargs in func_params_list]
+        if len(func_params_list) > 0: 
+            func = globals()[func_name]
+            args, kwargs = func_params_list.pop(0)
+            func_params += [(func, [img_base_path, base_url, delay, *args], kwargs)]
+        else:
+            func_info_keys.pop(i%len(func_info_keys))
+        i += 1
     return func_params
 
 def main(parser : argparse.ArgumentParser):
@@ -949,17 +978,20 @@ def main(parser : argparse.ArgumentParser):
     generate = argv.generate
 
     if generate:
-        func_info = generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)
-        func_info = {**func_info, **generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
+        func_info = generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)
+        # func_info = generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)
+        # func_info = {**func_info, **generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
         # func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
         func_info = {**func_info, **generate_boxplot_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
         func_info = {**func_info, **generate_violinplot_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
         func_info = {**func_info, **generate_kde_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
-        # func_info = {**func_info, **generate_jointplot_params(MODES, STATE_SPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], ESTIMATORS)}
-        # func_info['joint_plots'] += generate_jointplot_params(MODES, GRAPH_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], ESTIMATORS)['joint_plots']
-        # func_info['joint_plots'] += generate_jointplot_params(MODES, MORPHO_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], ESTIMATORS)['joint_plots']
-        # func_info['joint_plots'] += generate_jointplot_params(MODES, OBJECTIVESPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], ESTIMATORS)['joint_plots']
-        # func_info = {**func_info, **generate_pairplot_params(MODES, [TASK_PERFORMANCE_INDICATORS, PHENOTYPE_DIVERSITY_INDICATORS, GENE_DIVERSITY_INDICATORS], CORR_PLOT_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[1]], ESTIMATORS)}
+        func_info = {**func_info, **generate_jointplot_params(MODES, STATE_SPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])}
+        func_info['joint_plots'] += generate_jointplot_params(MODES, GRAPH_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
+        func_info['joint_plots'] += generate_jointplot_params(MODES, MORPHO_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
+        func_info['joint_plots'] += generate_jointplot_params(MODES, OBJECTIVESPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
+        func_info = {**func_info, **generate_pairplot_params(MODES, [TASK_PERFORMANCE_INDICATORS, PHENOTYPE_DIVERSITY_INDICATORS, 
+                                                                     GENE_DIVERSITY_INDICATORS], CORR_PLOT_INDICATORS, STATISTICS, 
+                                                                     EXPERIMENTS, POPULATIONS, [N_BOOT[0]], ESTIMATORS)}
         for key in func_info.keys():
             print(f"({key}, {len(func_info[key])})")
         json_object = json.dumps(func_info, indent=4)

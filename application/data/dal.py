@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import json
 import pickle
 import numpy as np
 import psycopg2
