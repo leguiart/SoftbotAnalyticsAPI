@@ -800,6 +800,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
             plt.close(fig)
+            plt.close(g.figure)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
@@ -909,6 +910,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
             plt.close(fig)
+            plt.close(g.figure)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 

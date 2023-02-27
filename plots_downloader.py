@@ -961,7 +961,7 @@ def json_to_func_params(img_base_path, base_url, delay, func_info : dict):
         if len(func_params_list) > 0: 
             func = globals()[func_name]
             args, kwargs = func_params_list.pop(0)
-            func_params += [(func, [img_base_path, base_url, delay, *args], kwargs)]
+            func_params += [(func, [img_base_path, base_url, delay*i, *args], kwargs)]
         else:
             func_info_keys.pop(i%len(func_info_keys))
         i += 1

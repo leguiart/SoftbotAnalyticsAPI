@@ -278,21 +278,15 @@ LANG_DICTS = {
     })
 }
 
+sns.set(style="darkgrid")
 app = Flask(__name__)
 CORS(app)
 dal = Dal()
-# plt.rcParams.update({
-#     "text.usetex": True,
-#     "font.family": "sans-serif",
-#     "font.sans-serif": "Helvetica",
-# })
 
 def encode_image(img : Image):
     buffer = io.BytesIO()
     img.save(buffer, 'png')
-
     buffer.seek(0)
-    
     data = buffer.read()
     data = base64.b64encode(data).decode()
     return data
@@ -518,7 +512,6 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         
         resulting_df =  pd.concat(df_list, ignore_index=True)
         # fig,ax = plt.subplots(ncols=1)
-        sns.set(style="darkgrid")
         g = sns.jointplot(data=resulting_df, x=compact_indicator1, y=compact_indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
         # g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2,  height=9, ratio=2)
         # g.plot_joint(sns.kdeplot, hue='experiment', zorder=0, levels=20)
@@ -631,7 +624,7 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         resulting_df = pd.concat(df_list, ignore_index=True)
         for indicator_compact in compacted_indicators:
             resulting_df[indicator_compact] = resulting_df[indicator_compact].astype('float')
-        sns.set(style="darkgrid")
+        
         g = sns.pairplot(resulting_df, hue="experiment", markers = ['o' for _ in experiment_names])
         g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.) for _ in experiment_names]})
 
@@ -783,7 +776,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
-            sns.set(style="darkgrid")
+            
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
             g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
@@ -799,6 +792,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
             plt.close(fig)
+            plt.close(g.figure)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
@@ -892,7 +886,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
-            sns.set(style="darkgrid")
+            
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
             # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
             g = sns.violinplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
@@ -908,6 +902,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
             plt.close(fig)
+            plt.close(g.figure)
         array_of_img_arrays.append(img_array)
     return array_of_img_arrays
 
@@ -1001,7 +996,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
 
-            sns.set(style="darkgrid")
+            
             # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
             g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kde=True, height=8, aspect=1.2)
             if estimator:
