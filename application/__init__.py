@@ -1,5 +1,6 @@
 
 from ast import Dict
+import gc
 import itertools
 import numpy as np
 import io
@@ -281,7 +282,6 @@ LANG_DICTS = {
 sns.set(style="darkgrid")
 app = Flask(__name__)
 CORS(app)
-dal = Dal()
 
 def encode_image(img : Image):
     buffer = io.BytesIO()
@@ -376,7 +376,7 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
         for j, indicator in enumerate(indicators):
             if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
                 indicators[j] = pop_prefix + indicator
-
+    dal = Dal()
     run_ids = []
     exp_run_mapping = {}
     for experiment_name in experiment_names:
@@ -462,7 +462,7 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
             estimator_func = np.median
     elif estimator is not None and estimator not in STATISTICS: 
         raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
-
+    dal = Dal()
     run_ids = []
     exp_run_mapping = {}
     for experiment_name in experiment_names:
@@ -568,7 +568,7 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
             estimator_func = np.median
     elif estimator is not None and estimator not in STATISTICS: 
         raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
-
+    dal = Dal()
     run_ids = []
     exp_run_mapping = {}
     for experiment_name in experiment_names:
@@ -683,7 +683,6 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
 
         correlations_img_array.append(corr_imgs)
         correlation_tables_array.append(corr_tables)
-
     return pairplots_img_array, correlations_img_array, correlation_tables_array
 
 def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000, lang = 'en'):
@@ -724,7 +723,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             estimator_func = np.median
     elif estimator is not None and estimator not in STATISTICS: 
         raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
-
+    dal = Dal()
     run_ids = []
     exp_run_mapping = {}
     for experiment_name in experiment_names:
@@ -834,7 +833,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             estimator_func = np.median
     elif estimator is not None and estimator not in STATISTICS: 
         raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
-
+    dal = Dal()
     run_ids = []
     exp_run_mapping = {}
     for experiment_name in experiment_names:
@@ -944,7 +943,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             estimator_func = np.median
     elif estimator is not None and estimator not in STATISTICS: 
         raise InvalidAPIUsage(f'No {estimator} estimator supported!', status_code=404)
-
+    dal = Dal()
     run_ids = []
     exp_run_mapping = {}
     for experiment_name in experiment_names:
@@ -1026,7 +1025,7 @@ def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang
         raise InvalidAPIUsage(f'No {archive} archive exists!', status_code=404)
     if statistic not in STATISTICS:
         raise InvalidAPIUsage(f'No {statistic} statistic exists!', status_code=404)
-
+    dal = Dal()
     run_ids = {}
     experiment_parameters = {}
     for experiment_name in experiment_names:
@@ -1123,7 +1122,7 @@ def ChooseWinner(indicators, statistic, population_type, experiment_names):
         raise InvalidAPIUsage(f'No {population_type} population type exists!', status_code=404)
     elif population_type and population_type in ['parent', 'child']:
         pop_prefix = population_type + '_'
-    
+    dal = Dal()
     if pop_prefix != '':
         for j, indicator in enumerate(indicators):
             if indicator not in ["qd-score_ff","qd-score_fun","qd-score_fan","qd-score_anf","qd-score_anun","qd-score_anan","coverage"]:
@@ -1265,6 +1264,7 @@ def IndicatorPairPlotsRenderGET(mode):
             paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return "<br>".join([f'<img src="data:image/png;base64,{pairplot_img}">' + "".join([f'<img src="data:image/png;base64,{corr_img}">' for corr_img in corr_imgs]) for pairplot_img, corr_imgs in zip(paiplot_img_array, corr_img_array)])
 
 @app.route("/IndicatorPairPlots/mode/<mode>", methods = ["GET"])
@@ -1293,6 +1293,7 @@ def IndicatorPairPlotsGET(mode):
             paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return jsonify({
             'msg': 'success', 
             'pairplot_imgs': paiplot_img_array,
@@ -1324,6 +1325,7 @@ def IndicatorJointKdePlotRenderGET(indicator1, indicator2, mode):
             img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return "".join([f'<img src="data:image/png;base64,{img}">' for img in img_array])
 
 @app.route("/IndicatorJointKdePlot/indicator1/<indicator1>/indicator2/<indicator2>/mode/<mode>", methods = ["GET"])
@@ -1350,6 +1352,7 @@ def IndicatorJointKdePlotGET(indicator1, indicator2, mode):
             img_array = IndicatorJointKdePlot(indicator1, indicator2, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return jsonify({
             'msg': 'success', 
             'img': img_array
@@ -1381,6 +1384,7 @@ def IndicatorKdePlotsRenderGET(mode):
             array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return "<br>".join(["".join([f'<img src="data:image/png;base64,{img}">' for img in img_array]) for img_array in array_of_img_arrays])
 
 @app.route("/IndicatorKdePlots/mode/<mode>", methods = ["GET"])
@@ -1409,6 +1413,7 @@ def IndicatorKdePlotsGET(mode):
             array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return jsonify({
             'msg': 'success', 
             'img': array_of_img_arrays
@@ -1440,6 +1445,7 @@ def IndicatorBoxPlotsRenderGET(mode):
             array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
 
 @app.route("/IndicatorBoxPlots/mode/<mode>", methods = ["GET"])
@@ -1468,6 +1474,7 @@ def IndicatorBoxPlotsGET(mode):
             array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return jsonify({
             'msg': 'success', 
             'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
@@ -1501,6 +1508,7 @@ def IndicatorViolinPlotsRenderGET(mode):
             array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
 
 @app.route("/IndicatorViolinPlots/mode/<mode>", methods = ["GET"])
@@ -1529,6 +1537,7 @@ def IndicatorViolinPlotsGET(mode):
             array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
+    gc.collect()
     return jsonify({
             'msg': 'success', 
             'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
@@ -1550,7 +1559,7 @@ def IndicatorBsConvergencePlotsRenderGET(n_boot):
         array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     else:
         array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
-
+    gc.collect()
     return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
 
 @app.route("/IndicatorBsConvergencePlots/n_boot/<n_boot>", methods = ["GET"])
@@ -1567,6 +1576,7 @@ def IndicatorBsConvergencePlotsGET(n_boot):
         array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     else:
         array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
+    gc.collect()
     return jsonify({
             'msg': 'success', 
             'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
@@ -1576,6 +1586,7 @@ def IndicatorBsConvergencePlotsGET(n_boot):
 
 @app.route("/IndicatorPlotRunRender/experiment/<experiment_name>/indicator/<indicator>/run/<run_number>/statistic/<statistic>", methods = ["GET"])
 def IndicatorPlotRunRenderGET(experiment_name, indicator, run_number, statistic):
+    dal = Dal()
     args = request.args
     population_type = args.get('population')
 
@@ -1621,7 +1632,7 @@ def AllPlotRunRenderGET(experiment_name, run_number, statistic):
     args = request.args
     population_type = args.get('population')
     pop_prefix = ''
-
+    dal = Dal()
     if statistic not in STATISTICS:
         raise InvalidAPIUsage(f'No {statistic} statistic exists!', status_code=404)
 
@@ -1670,6 +1681,7 @@ def StructuredArchivePlotsRenderGET(archive, indicator, statistic):
     experiment_names = args.getlist('experiments')
     lang = parse_lang(args.get('lang'))
     img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
+    gc.collect()
     return "".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array])
 
 @app.route("/StructuredArchivePlots/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
@@ -1678,6 +1690,7 @@ def StructuredArchivePlotsGET(archive, indicator, statistic):
     experiment_names = args.getlist('experiments')
     lang = parse_lang(args.get('lang'))
     img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
+    gc.collect()
     return jsonify({
         'msg': 'success', 
         'size': [[img.width, img.height] for img in img_array], 
@@ -1693,6 +1706,7 @@ def ChooseWinnerGET(statistic):
     indicator_list = args.getlist('indicators')
     indicator_list = WINNING_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     condorcet_scores, borda_count, places_count, permutation_counts, indicator_algo_scores, indicator_algo_tables = ChooseWinner(indicator_list, statistic, population_type, experiment_names)
+    gc.collect()
     return jsonify({
             'msg': 'success', 
             'condorcet_scores' : condorcet_scores,
