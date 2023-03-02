@@ -978,10 +978,9 @@ def main(parser : argparse.ArgumentParser):
     generate = argv.generate
 
     if generate:
-        func_info = generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)
-        # func_info = generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)
-        # func_info = {**func_info, **generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
-        # func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
+        func_info = generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)
+        func_info = {**func_info, **generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
+        func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
         func_info = {**func_info, **generate_boxplot_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
         func_info = {**func_info, **generate_violinplot_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
         func_info = {**func_info, **generate_kde_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
