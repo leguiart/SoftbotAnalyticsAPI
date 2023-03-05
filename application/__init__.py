@@ -24,47 +24,92 @@ class KeyDict(defaultdict):
         return key
 
 INDICATOR_STATS_SET = [
-            "fitness",
-            "morphology",
-            "unaligned_novelty",
-            "aligned_novelty",
-            "gene_diversity",
-            "control_gene_div",
-            "morpho_gene_div",
-            "morpho_div",
-            "endpoint_div",
-            "trayectory_div",
-            "inipoint_x",
-            "inipoint_y",
-            "inipoint_z",
-            "endpoint_x",
-            "endpoint_y",
-            "endpoint_z",
-            "trayectory_x",
-            "trayectory_y",
-            "trayectory_z",
-            "morphology_active",
-            "morphology_passive",
-            "unaligned_novelty_archive_fit",
-            "aligned_novelty_archive_fit",
-            "unaligned_novelty_archive_novelty",
-            "aligned_novelty_archive_novelty",
-            "qd-score_ff",
-            "qd-score_fun",
-            "qd-score_fan",
-            "qd-score_anf",
-            "qd-score_anun",
-            "qd-score_anan",
-            "coverage",            
-            "control_cppn_nodes",
-            "control_cppn_edges",
-            "control_cppn_ws",
-            "morpho_cppn_nodes",
-            "morpho_cppn_edges",
-            "morpho_cppn_ws",
-            "simplified_gene_div",
-            "simplified_gene_ne_div",
-            "simplified_gene_nws_div"]
+    "fitness",
+    "morphology",
+    "unaligned_novelty",
+    "aligned_novelty",
+    "gene_diversity",
+    "control_gene_div",
+    "morpho_gene_div",
+    "morpho_div",
+    "endpoint_div",
+    "trayectory_div",
+    "inipoint_x",
+    "inipoint_y",
+    "inipoint_z",
+    "endpoint_x",
+    "endpoint_y",
+    "endpoint_z",
+    "trayectory_x",
+    "trayectory_y",
+    "trayectory_z",
+    "morphology_active",
+    "morphology_passive",
+    "unaligned_novelty_archive_fit",
+    "aligned_novelty_archive_fit",
+    "unaligned_novelty_archive_novelty",
+    "aligned_novelty_archive_novelty",
+    "qd-score_ff",
+    "qd-score_fun",
+    "qd-score_fan",
+    "qd-score_anf",
+    "qd-score_anun",
+    "qd-score_anan",
+    "coverage",            
+    "control_cppn_nodes",
+    "control_cppn_edges",
+    "control_cppn_ws",
+    "morpho_cppn_nodes",
+    "morpho_cppn_edges",
+    "morpho_cppn_ws",
+    "simplified_gene_div",
+    "simplified_gene_ne_div",
+    "simplified_gene_nws_div"
+]
+
+INDICATORS_TO_ABR = {
+    "fitness" : "f",
+    "morphology" : "m",
+    "unaligned_novelty" : "un",
+    "aligned_novelty" : "an",
+    "gene_diversity" : "dg",
+    "control_gene_div" : "dgc",
+    "morpho_gene_div" : "dgm",
+    "morpho_div" : "dm",
+    "endpoint_div" : "dr",
+    "trayectory_div" : "ds",
+    "inipoint_x" : "x0",
+    "inipoint_y" : "y0",
+    "inipoint_z" : "z0",
+    "endpoint_x" : "rx",
+    "endpoint_y" : "ry",
+    "endpoint_z" : "rz",
+    "trayectory_x" : "sx",
+    "trayectory_y" : "sy",
+    "trayectory_z" : "sz",
+    "morphology_active" : "ma",
+    "morphology_passive" : "mp",
+    "unaligned_novelty_archive_fit" : "unaf",
+    "aligned_novelty_archive_fit" : "anaf",
+    "unaligned_novelty_archive_novelty" : "unan",
+    "aligned_novelty_archive_novelty" : "anan",
+    "qd-score_ff" : "qdff",
+    "qd-score_fun" : "qdfun",
+    "qd-score_fan" : "qdfan",
+    "qd-score_anf" : "qdanf",
+    "qd-score_anun" : "qdanun",
+    "qd-score_anan" : "qdanan",
+    "coverage" : "c",            
+    "control_cppn_nodes" : "c-cppnn",
+    "control_cppn_edges" : "c-cppne",
+    "control_cppn_ws" : "c-cppnws",
+    "morpho_cppn_nodes" : "m-cppnn",
+    "morpho_cppn_edges" : "m-cppne",
+    "morpho_cppn_ws" : "m-cppnws",
+    "simplified_gene_div" : "dgs",
+    "simplified_gene_ne_div" : "dgne",
+    "simplified_gene_nws_div" : "dgnw"
+}
 
 def to_math_font(font, word, accent = '', suff = None):
     math_text = r"$" + accent + font + r"{" + word + r"}"
@@ -108,48 +153,49 @@ def compactify_indicator(indicator):
     return indicator_compact
 
 
-INDICATORS_TO_COMPACT = KeyDict(dict, 
-            {"fitness" : (to_math_it, 'F'),
-            "morphology" : (to_math_it, 'M'),
-            "unaligned_novelty" : (to_math_it, 'N_u'),
-            "aligned_novelty" : (to_math_it, 'N_a'), 
-            "gene_diversity" : (to_math_it, 'D_g'),
-            "control_gene_div" : (to_math_it, r'D_{gc}'),
-            "morpho_gene_div" : (to_math_it, r'D_{gm}'),
-            "morpho_div" : (to_math_it, 'D_m'),
-            "endpoint_div" : (to_math_it, r'D_{\vec r(t=T)}'),
-            "trayectory_div" : (to_math_it, r'D_{\vec s}'),
-            "inipoint_x" : (to_math_it, r'\vec r_{x}(t=0)'),
-            "inipoint_y": (to_math_it, r'\vec r_{y}(t=0)'),
-            "inipoint_z": (to_math_it, r'\vec r_{z}(t=0)'),
-            "endpoint_x": (to_math_it, r'\vec r_{x}(t=T)'),
-            "endpoint_y": (to_math_it, r'\vec r_{y}(t=T)'),
-            "endpoint_z": (to_math_it, r'\vec r_{z}(t=T)'),
-            "trayectory_x": (to_math_it, r'(\vec s_{x}'),
-            "trayectory_y": (to_math_it, r'\vec s_{y}'),
-            "trayectory_z": (to_math_it, r'\vec s_{z}'),
-            "morphology_active" : (to_math_it, 'M_a'),
-            "morphology_passive" : (to_math_it, 'M_p'),
-            "unaligned_novelty_archive_fit" : (to_math_tt, 'F_u'),
-            "aligned_novelty_archive_fit" : (to_math_tt, 'F_a'),
-            "unaligned_novelty_archive_novelty" : (to_math_tt, 'N_u'),
-            "aligned_novelty_archive_novelty" : (to_math_tt, 'N_a'),
-            "qd-score_ff" : (to_math_tt, r'Q_{ff}'),
-            "qd-score_fun" : (to_math_tt, r'Q_{fun}'),
-            "qd-score_fan" : (to_math_tt, r'Q_{fan}'),
-            "qd-score_anf" : (to_math_tt, r'Q_{anf}'),
-            "qd-score_anun" : (to_math_tt, r'Q_{anun}'),
-            "qd-score_anan" : (to_math_tt, r'Q_{anan}'),
-            "coverage" : (to_math_cal, "C"),            
-            "control_cppn_nodes" : (to_math_rm, "C-CPPN_n"),
-            "control_cppn_edges" : (to_math_rm, "C-CPPN_e"),
-            "control_cppn_ws" : (to_math_rm, "C-CPPN_w"),
-            "morpho_cppn_nodes" : (to_math_rm, "M-CPPN_n"),
-            "morpho_cppn_edges" : (to_math_rm, "M-CPPN_e"),
-            "morpho_cppn_ws" : (to_math_rm, "M-CPPN_w"),
-            "simplified_gene_div" : (to_math_it, r"D_{gs}"),
-            "simplified_gene_ne_div" : (to_math_it, r"D_{gcs}"),
-            "simplified_gene_nws_div" : (to_math_it, r"D_{gms}")})
+INDICATORS_TO_COMPACT = KeyDict(dict,{
+    "fitness": (to_math_it, 'F'),
+    "morphology": (to_math_it, 'M'),
+    "unaligned_novelty": (to_math_it, 'N_u'),
+    "aligned_novelty": (to_math_it, 'N_a'),
+    "gene_diversity": (to_math_it, 'D_g'),
+    "control_gene_div": (to_math_it, r'D_{gc}'),
+    "morpho_gene_div": (to_math_it, r'D_{gm}'),
+    "morpho_div": (to_math_it, 'D_m'),
+    "endpoint_div": (to_math_it, r'D_{\vec r(t=T)}'),
+    "trayectory_div": (to_math_it, r'D_{\vec s}'),
+    "inipoint_x": (to_math_it, r'\vec r_{x}(t=0)'),
+    "inipoint_y": (to_math_it, r'\vec r_{y}(t=0)'),
+    "inipoint_z": (to_math_it, r'\vec r_{z}(t=0)'),
+    "endpoint_x": (to_math_it, r'\vec r_{x}(t=T)'),
+    "endpoint_y": (to_math_it, r'\vec r_{y}(t=T)'),
+    "endpoint_z": (to_math_it, r'\vec r_{z}(t=T)'),
+    "trayectory_x": (to_math_it, r'(\vec s_{x}'),
+    "trayectory_y": (to_math_it, r'\vec s_{y}'),
+    "trayectory_z": (to_math_it, r'\vec s_{z}'),
+    "morphology_active": (to_math_it, 'M_a'),
+    "morphology_passive": (to_math_it, 'M_p'),
+    "unaligned_novelty_archive_fit": (to_math_tt, 'F_u'),
+    "aligned_novelty_archive_fit": (to_math_tt, 'F_a'),
+    "unaligned_novelty_archive_novelty": (to_math_tt, r'N_{uu}'),
+    "aligned_novelty_archive_novelty": (to_math_tt, r'N_{ua}'),
+    "qd-score_ff": (to_math_tt, r'Q_{ff}'),
+    "qd-score_fun": (to_math_tt, r'Q_{fun}'),
+    "qd-score_fan": (to_math_tt, r'Q_{fan}'),
+    "qd-score_anf": (to_math_tt, r'Q_{anf}'),
+    "qd-score_anun": (to_math_tt, r'Q_{anun}'),
+    "qd-score_anan": (to_math_tt, r'Q_{anan}'),
+    "coverage": (to_math_cal, "C"),
+    "control_cppn_nodes": (to_math_rm, "C-CPPN_n"),
+    "control_cppn_edges": (to_math_rm, "C-CPPN_e"),
+    "control_cppn_ws": (to_math_rm, "C-CPPN_w"),
+    "morpho_cppn_nodes": (to_math_rm, "M-CPPN_n"),
+    "morpho_cppn_edges": (to_math_rm, "M-CPPN_e"),
+    "morpho_cppn_ws": (to_math_rm, "M-CPPN_w"),
+    "simplified_gene_div": (to_math_it, r"D_{gs}"),
+    "simplified_gene_ne_div": (to_math_it, r"D_{gne}"),
+    "simplified_gene_nws_div": (to_math_it, r"D_{gnw}")
+})
 
 PLOT_INDICATORS = [
             "fitness",
@@ -398,10 +444,10 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
 
-    array_of_img_arrays = []
+    dict_of_img_dicts = {}
     for indicator in indicators:
+        dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
-        img_array = []
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
                 continue
@@ -423,10 +469,9 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
             fig.canvas.draw()
             data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+            dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
             plt.close(fig)
-        array_of_img_arrays.append(img_array)
-    return array_of_img_arrays
+    return dict_of_img_dicts
 
 def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000, lang = 'en'):
     if not lang in LANG_DICTS:
@@ -592,9 +637,13 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
     
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
     
-    pairplots_img_array = []
-    correlations_img_array = []
-    correlation_tables_array = []
+    reduced_names_str = "_".join([INDICATORS_TO_ABR["_".join(indicator.split('_')[1:])] 
+                                             if any(prefix in indicator for prefix in ['parent', 'child']) 
+                                             else INDICATORS_TO_ABR[indicator] 
+                                             for indicator in indicators])
+    pairplots_img_array = {reduced_names_str : {}}
+    correlations_img_array = {reduced_names_str : {}}
+    correlation_tables_array = {reduced_names_str : {}}
     
     for statistic in statistics:
         df_list = []
@@ -639,10 +688,10 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         buffer.seek(0)
         data1 = buffer.read()
         data1 = base64.b64encode(data1).decode()
-        pairplots_img_array += [data1]  
+        pairplots_img_array[reduced_names_str][statistic] = data1  
         plt.close(g.figure)
-        corr_imgs = []
-        corr_tables = []
+        correlations_img_array[reduced_names_str][statistic] = {}
+        correlation_tables_array[reduced_names_str][statistic] = {}
         for experiment_name in experiment_names:
             experiment_indicator_data = resulting_df[resulting_df['experiment'] == experiment_name]
             correlation_table = experiment_indicator_data.corr()
@@ -677,12 +726,9 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
             data2 = data2.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             data2 = Image.fromarray(data2.astype('uint8')).convert('RGBA')
             data2 = encode_image(data2)
-            corr_imgs += [data2]
+            correlations_img_array[reduced_names_str][statistic][experiment_name] = data2
             plt.close(fig)
-            corr_tables += [correlation_table_np.tolist()]
-
-        correlations_img_array.append(corr_imgs)
-        correlation_tables_array.append(corr_tables)
+            correlation_tables_array[reduced_names_str][statistic][experiment_name] = correlation_table_np.tolist()
     return pairplots_img_array, correlations_img_array, correlation_tables_array
 
 def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000, lang = 'en'):
@@ -745,9 +791,9 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
     
-    array_of_img_arrays = []
+    dict_of_img_dicts = {}
     for indicator in indicators:
-        img_array = []
+        dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
@@ -789,11 +835,10 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             fig.canvas.draw()
             data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+            dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
             plt.close(fig)
             plt.close(g.figure)
-        array_of_img_arrays.append(img_array)
-    return array_of_img_arrays
+    return dict_of_img_dicts
 
 def IndicatorViolinPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000, lang = 'en'):
     if not lang in LANG_DICTS:
@@ -855,9 +900,9 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
     
-    array_of_img_arrays = []
+    dict_of_img_dicts = {}
     for indicator in indicators:
-        img_array = []
+        dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
@@ -899,11 +944,10 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             fig.canvas.draw()
             data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
             imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+            dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
             plt.close(fig)
             plt.close(g.figure)
-        array_of_img_arrays.append(img_array)
-    return array_of_img_arrays
+    return dict_of_img_dicts
 
 def IndicatorKdePlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000, lang = 'en'):
     if not lang in LANG_DICTS:
@@ -965,9 +1009,9 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
     
-    array_of_img_arrays = []
+    dict_of_img_dicts = {}
     for indicator in indicators:
-        img_array = []
+        dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
@@ -994,8 +1038,6 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
-
-            
             # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
             g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kde=True, height=8, aspect=1.2)
             if estimator:
@@ -1010,10 +1052,9 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             buffer.seek(0)
             data = buffer.read()
             data = base64.b64encode(data).decode()
-            img_array += [data]
+            dict_of_img_dicts[indicator][statistic] = data
             plt.close(g.figure)
-        array_of_img_arrays.append(img_array)
-    return array_of_img_arrays
+    return dict_of_img_dicts
 
 def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang = 'en'):
     indicator2Indx = {"fitness" : 2, "unaligned_novelty" : 3, "aligned_novelty" : 4}
@@ -1265,7 +1306,10 @@ def IndicatorPairPlotsRenderGET(mode):
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "<br>".join([f'<img src="data:image/png;base64,{pairplot_img}">' + "".join([f'<img src="data:image/png;base64,{corr_img}">' for corr_img in corr_imgs]) for pairplot_img, corr_imgs in zip(paiplot_img_array, corr_img_array)])
+    pairplots_dict = list(paiplot_img_array.values())[0]
+    corr_dict = list(corr_img_array.values())[0]
+    
+    return "<br>".join([f'<img src="data:image/png;base64,{pairplot_img}">' + "".join([f'<img src="data:image/png;base64,{corr_img}">' for corr_img in corr_imgs.values()]) for pairplot_img, corr_imgs in zip(pairplots_dict.values(), corr_dict.values())])
 
 @app.route("/IndicatorPairPlots/mode/<mode>", methods = ["GET"])
 def IndicatorPairPlotsGET(mode):
@@ -1369,23 +1413,23 @@ def IndicatorKdePlotsRenderGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
         else:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
         else:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{img}">' for img in img_array]) for img_array in array_of_img_arrays])
+    return "<br>".join(["".join([f'<img src="data:image/png;base64,{img}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorKdePlots/mode/<mode>", methods = ["GET"])
 def IndicatorKdePlotsGET(mode):
@@ -1398,25 +1442,25 @@ def IndicatorKdePlotsGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
         else:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
         else:
-            array_of_img_arrays = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            dict_of_img_dicts = IndicatorKdePlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
     return jsonify({
             'msg': 'success', 
-            'img': array_of_img_arrays
+            'img': dict_of_img_dicts
         })
 
 @app.route("/IndicatorBoxPlotsRender/mode/<mode>", methods = ["GET"])
@@ -1430,23 +1474,23 @@ def IndicatorBoxPlotsRenderGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
         else:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
         else:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
+    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorBoxPlots/mode/<mode>", methods = ["GET"])
 def IndicatorBoxPlotsGET(mode):
@@ -1459,27 +1503,28 @@ def IndicatorBoxPlotsGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
         else:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
         else:
-            array_of_img_arrays = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            dict_of_img_dicts = IndicatorBoxPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
+    first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
     return jsonify({
             'msg': 'success', 
-            'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
-            'format': array_of_img_arrays[0][0].format,
-            'img': [[encode_image(img) for img in img_array] for img_array in array_of_img_arrays]
+            'size': [first_img.width, first_img.height], 
+            'format': first_img.format,
+            'img': {indicator : {stat : encode_image(img) for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
         })
 
 @app.route("/IndicatorViolinPlotsRender/mode/<mode>", methods = ["GET"])
@@ -1493,23 +1538,23 @@ def IndicatorViolinPlotsRenderGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
         else:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
         else:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
+    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorViolinPlots/mode/<mode>", methods = ["GET"])
 def IndicatorViolinPlotsGET(mode):
@@ -1522,27 +1567,28 @@ def IndicatorViolinPlotsGET(mode):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if mode == 'full':
-        array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
         else:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
         else:
-            array_of_img_arrays = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            dict_of_img_dicts = IndicatorViolinPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
+    first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
     return jsonify({
             'msg': 'success', 
-            'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
-            'format': array_of_img_arrays[0][0].format,
-            'img': [[encode_image(img) for img in img_array] for img_array in array_of_img_arrays]
+            'size': [first_img.width, first_img.height], 
+            'format': first_img.format,
+            'img': {indicator : {stat : encode_image(img) for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
         })
 
 @app.route("/IndicatorBsConvergencePlotsRender/n_boot/<n_boot>", methods = ["GET"])
@@ -1556,11 +1602,11 @@ def IndicatorBsConvergencePlotsRenderGET(n_boot):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if n_boot == 'default':
-        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     else:
-        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
+        dict_of_img_dicts = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array]) for img_array in array_of_img_arrays])
+    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorBsConvergencePlots/n_boot/<n_boot>", methods = ["GET"])
 def IndicatorBsConvergencePlotsGET(n_boot):
@@ -1573,15 +1619,16 @@ def IndicatorBsConvergencePlotsGET(n_boot):
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
     if n_boot == 'default':
-        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        dict_of_img_dicts = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
     else:
-        array_of_img_arrays = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
+        dict_of_img_dicts = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
     gc.collect()
+    first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
     return jsonify({
             'msg': 'success', 
-            'size': [[[img.width, img.height] for img in img_array] for img_array in array_of_img_arrays], 
-            'format': array_of_img_arrays[0][0].format,
-            'img': [[encode_image(img) for img in img_array] for img_array in array_of_img_arrays]
+            'size': [first_img.width, first_img.height], 
+            'format': first_img.format,
+            'img': {indicator : {stat : encode_image(img) for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
         })
 
 @app.route("/IndicatorPlotRunRender/experiment/<experiment_name>/indicator/<indicator>/run/<run_number>/statistic/<statistic>", methods = ["GET"])
@@ -1718,5 +1765,6 @@ def ChooseWinnerGET(statistic):
         })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # app.run(host='0.0.0.0', port=5000)
+    app.run(debug=True)
     
