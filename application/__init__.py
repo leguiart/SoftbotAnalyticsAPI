@@ -719,7 +719,7 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
             elif bootsrapped_dist:
                 ax.set_title(lang_dict["corr_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot], experiment_name = experiment_name), y=1.)
             else:
-                ax.set_title(title=lang_dict["corr_title_template_all"].format(statistic=lang_dict[statistic], experiment_name = experiment_name), y=1.)
+                ax.set_title(lang_dict["corr_title_template_all"].format(statistic=lang_dict[statistic], experiment_name = experiment_name), y=1.)
             fig.tight_layout()
             fig.canvas.draw()
             data2 = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
