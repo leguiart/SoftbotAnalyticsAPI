@@ -1430,7 +1430,7 @@ def IndicatorPairPlotsGET(mode):
     lang = parse_lang(args.get('lang'))
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
-    separate_experiments = separate_experiments is not None and separate_experiments
+    separate_experiments = separate_experiments is None or separate_experiments == "True"
     if mode == 'full':
         paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang, separate_experiments=separate_experiments)
     elif mode == 'bootstrap_dist':
