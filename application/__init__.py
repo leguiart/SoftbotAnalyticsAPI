@@ -1424,6 +1424,7 @@ def IndicatorPairPlotsRenderGET(mode):
 def IndicatorPairPlotsGET(mode):
     args = request.args
     population_type = args.get('population')
+    separate_experiments = args.get('separate_experiments')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
