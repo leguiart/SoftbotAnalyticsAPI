@@ -311,7 +311,7 @@ INDICATORS_TO_COMPACT = KeyDict(dict,
             "simplified_gene_ne_div" : (to_math_it, r"D_{gcs}"),
             "simplified_gene_nws_div" : (to_math_it, r"D_{gms}")})
 
-def generate_parameters(param_list : list, modes, indicators, statistics, experiments, populations, n_boots, estimators, lang, param_key):
+def generate_parameters(param_list : list, modes, indicators, statistics, experiments, populations, n_boots, estimators, lang, param_key, separate_experiments = True):
     for mode in modes:
         args_list = [mode, indicators, statistics, experiments]
         for pop_type in populations:
@@ -319,6 +319,8 @@ def generate_parameters(param_list : list, modes, indicators, statistics, experi
                 kwargs_dict = {"population":pop_type}
             else:
                 kwargs_dict = {}
+            if not separate_experiments:
+                kwargs_dict["separate_experiments"] = str(separate_experiments)
             if mode == "bootstrap_dist":
                 for n_boot in n_boots:
                     if n_boot != "default":
@@ -363,9 +365,9 @@ def generate_parameters2(param_list : list, modes, indicators, statistics, exper
                 kwargs_dict["lang"] = lang 
                 param_list.append([args_list, kwargs_dict.copy()])
 
-def generate_parameters_dict(param_key, modes, indicators, statistics, experiments, populations, n_boots, estimators, lang):
+def generate_parameters_dict(param_key, modes, indicators, statistics, experiments, populations, n_boots, estimators, lang, separate_experiments = True):
     param_dict = {param_key : []}
-    generate_parameters(param_dict[param_key], modes, indicators, statistics, experiments, populations, n_boots, estimators, lang, param_key)
+    generate_parameters(param_dict[param_key], modes, indicators, statistics, experiments, populations, n_boots, estimators, lang, param_key, separate_experiments=separate_experiments)
     return param_dict
 
 def generate_kde_params(modes, indicators, statistics, experiments, populations, n_boots, estimators, lang = "es"):
@@ -397,16 +399,17 @@ def generate_convergence_params(indicators, statistics, experiments, populations
 
     return param_dict
 
-def generate_pairplot_params(modes, indicator_groups, indicators, statistics, experiments, populations, n_boots, estimators, lang = "es"):
+def generate_pairplot_params(modes, indicator_groups, indicators, statistics, experiments, populations, n_boots, estimators, lang = "es", separate_experiments = True):
     param_key = 'pair_plots'
-    param_dict = generate_parameters_dict(param_key, modes, indicators, statistics, experiments, populations, n_boots, estimators, lang)
+    # param_dict = {param_key : []}
+    param_dict = generate_parameters_dict(param_key, modes, indicators, statistics, experiments, populations, n_boots, estimators, lang, separate_experiments = separate_experiments)
     for indicator_group in indicator_groups:
-        generate_parameters(param_dict[param_key], modes, indicator_group, statistics, experiments, populations, n_boots, estimators, lang, param_key)
+        generate_parameters(param_dict[param_key], modes, indicator_group, statistics, experiments, populations, n_boots, estimators, lang, param_key, separate_experiments = separate_experiments)
     for i, indicator_group1 in enumerate(indicator_groups):
         for j in range(i + 1, len(indicator_groups)):
             indicator_group2 = indicator_groups[j]
             indicator_pair = indicator_group1 + indicator_group2
-            generate_parameters(param_dict[param_key], modes, indicator_pair, statistics, experiments, populations, n_boots, estimators, lang, param_key)
+            generate_parameters(param_dict[param_key], modes, indicator_pair, statistics, experiments, populations, n_boots, estimators, lang, param_key, separate_experiments = separate_experiments)
     return param_dict
 
 def generate_jointplot_params(modes, indicators, statistics, experiments, populations, n_boots, estimators, lang = "es"):
@@ -462,18 +465,10 @@ def kde_distributions(img_base_path, base_url, delay, mode, indicators, statisti
                 os.mkdir(img_dir_path)
             logger.info(f'Saving figures: kde distributions with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             img_name_prefix = "_".join(['KdePlot', mode,'-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
-            for i, indicator in enumerate(indicators):
-                if len(imgs[i]) == 1:
-                    img_name = f'{img_name_prefix}_indicator={indicator}'
-                    img_data = bytes(imgs[i][0], 'utf-8')
-                    logger.info(f'Saving figure: {img_name}')
-                    with open(os.path.join(img_dir_path, img_name), "wb") as fh:
-                        fh.write(base64.decodebytes(img_data))
-                    logger.info(f'Saved figure: {img_name}')
-                    continue
-                for j, statistic in enumerate(statistics):
+            for indicator, img_dict in imgs.items():
+                for statistic, img in img_dict.items():
                     img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}'
-                    img_data = bytes(imgs[i][j], 'utf-8')
+                    img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
                         fh.write(base64.decodebytes(img_data))
@@ -514,23 +509,15 @@ def boxplots(img_base_path, base_url, delay, mode, indicators, statistics, exper
             logger.info(f'Finished getting box plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             logged_response = {'msg' : response['msg'], 'size' : response['size'], 'format' : response['format']}
             logger.info(f'Result of box plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
-            imgs = response['img']
+            imgs : dict[str, dict[str, str]] = response['img']
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
                 os.mkdir(img_dir_path)
             logger.info(f'Saving figures: box plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             img_name_prefix = "_".join(['BoxPlot', mode,'-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
-            for i, indicator in enumerate(indicators):
-                if len(imgs[i]) == 1:
-                    img_name = f'{img_name_prefix}_indicator={indicator}'
-                    img_data = bytes(imgs[i][0], 'utf-8')
-                    logger.info(f'Saving figure: {img_name}')
-                    with open(os.path.join(img_dir_path, img_name), "wb") as fh:
-                        fh.write(base64.decodebytes(img_data))
-                    logger.info(f'Saved figure: {img_name}')
-                    continue
-                for j, statistic in enumerate(statistics):
+            for indicator, img_dict in imgs.items():
+                for statistic, img in img_dict.items():
                     img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}'
-                    img_data = bytes(imgs[i][j], 'utf-8')
+                    img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
                         fh.write(base64.decodebytes(img_data))
@@ -571,23 +558,15 @@ def violinplots(img_base_path, base_url, delay, mode, indicators, statistics, ex
             logger.info(f'Finished getting violin plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             logged_response = {'msg' : response['msg'], 'size' : response['size'], 'format' : response['format']}
             logger.info(f'Result of violin plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
-            imgs = response['img']
+            imgs : dict[str, dict[str, str]] = response['img']
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
                 os.mkdir(img_dir_path)
             logger.info(f'Saving figures: violin plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             img_name_prefix = "_".join(['ViolinPlot', mode,'-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
-            for i, indicator in enumerate(indicators):
-                if len(imgs[i]) == 1:
-                    img_name = f'{img_name_prefix}_indicator={indicator}'
-                    img_data = bytes(imgs[i][0], 'utf-8')
-                    logger.info(f'Saving figure: {img_name}')
-                    with open(os.path.join(img_dir_path, img_name), "wb") as fh:
-                        fh.write(base64.decodebytes(img_data))
-                    logger.info(f'Saved figure: {img_name}')
-                    continue
-                for j, statistic in enumerate(statistics):
+            for indicator, img_dict in imgs.items():
+                for statistic, img in img_dict.items():
                     img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}'
-                    img_data = bytes(imgs[i][j], 'utf-8')
+                    img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
                         fh.write(base64.decodebytes(img_data))
@@ -628,23 +607,15 @@ def convergence_plots(img_base_path, base_url, delay, indicators, statistics, ex
             logger.info(f'Finished getting convergence plots with:\nargs - {[base_url,  indicators, statistics, experiment_names, n_boot]}\nkwargs - {kwargs}')
             logged_response = {'msg' : response['msg'], 'size' : response['size'], 'format' : response['format']}
             logger.info(f'Result of convergence plots with:\nargs - {[base_url,  indicators, statistics, experiment_names, n_boot]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
-            imgs = response['img']
+            imgs : dict[str, dict[str, str]] = response['img']
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
                 os.mkdir(img_dir_path)
             logger.info(f'Saving figures: convergence plots with:\nargs - {[base_url,  indicators, statistics, experiment_names, n_boot]}\nkwargs - {kwargs}')
             img_name_prefix = "_".join(['ConvergencePlot', '-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
-            for i, indicator in enumerate(indicators):
-                if len(imgs[i]) == 1:
-                    img_name = f'{img_name_prefix}_indicator={indicator}'
-                    img_data = bytes(imgs[i][0], 'utf-8')
-                    logger.info(f'Saving figure: {img_name}')
-                    with open(os.path.join(img_dir_path, img_name), "wb") as fh:
-                        fh.write(base64.decodebytes(img_data))
-                    logger.info(f'Saved figure: {img_name}')
-                    continue
-                for j, statistic in enumerate(statistics):
+            for indicator, img_dict in imgs.items():
+                for statistic, img in img_dict.items():
                     img_name = f'{img_name_prefix}_nboot={n_boot}_indicator={indicator}_statistic={statistic}'
-                    img_data = bytes(imgs[i][j], 'utf-8')
+                    img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
                         fh.write(base64.decodebytes(img_data))
@@ -698,7 +669,7 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
 
             condorcet_scores_d : dict[str, list] = {k : list(map(lambda x : x[1], list(v.items()))) for k, v in condorcet_scores.items()}
             condorcet_scores_table = pd.DataFrame(condorcet_scores_d, index = list(condorcet_scores.keys())).transpose()
-            response['condorcet_scores_latex'] = condorcet_scores_table.to_latex(index=False, caption="Método de Condorcet",float_format="%.4f", escape=False)
+            response['condorcet_scores_latex'] = condorcet_scores_table.to_latex(index=True, caption="Método de Condorcet",float_format="%.4f", escape=False)
 
             borda_count_d : dict[str, list] = {"Posición" : list(range(1, len(list(borda_count.keys())) + 1)) + ["Conteo de Borda"], **{k : places_count[k] + [borda_count[k]] for k in places_count.keys()}}
             borda_count_table = pd.DataFrame(borda_count_d)
@@ -708,7 +679,7 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
             response["permutation_counts_latex"] = permutation_counts_table.to_latex(index=False, caption="Incidencia de permutaciones",float_format="%.4f", escape=False)
 
             experiment_names_ias = list(indicator_algo_scores[list(indicator_algo_scores.keys())[0]].keys())
-            indicator_algo_scores_d : dict[str, list]= dict(zip(["Indicador/Algoritmo"] + experiment_names_ias, 
+            indicator_algo_scores_d : dict[str, list]= dict(zip(["Indicador"] + experiment_names_ias, 
                                                                 [[compactify_indicator(indicator) for indicator in indicator_algo_scores.keys()]] + 
                                                                 [[indicator_algo_scores[indicator][experiment] for indicator in indicator_algo_scores.keys()]
                                                                 for experiment in experiment_names_ias]))
@@ -716,9 +687,9 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
             response["indicator_algo_scores_latex"] = indicator_algo_scores_table.to_latex(index=False, caption="Puntuaciones por algoritmo en cada indicador",float_format="%.4f", escape=False)
             
             # experiment_names_iats = list(list(indicator_algo_tables.items())[0][1].keys())
-            indicator_algo_stats = dict(zip(["Indicador/Algoritmo"] + experiment_names, [[] for _ in range(len(experiment_names) + 1)]))
+            indicator_algo_stats = dict(zip(["Indicador"] + experiment_names, [[] for _ in range(len(experiment_names) + 1)]))
             for indicator, indicator_table in indicator_algo_tables.items():
-                indicator_algo_stats["Indicador/Algoritmo"] += [compactify_indicator(indicator)]
+                indicator_algo_stats["Indicador"] += [compactify_indicator(indicator)]
                 for algo, val in indicator_table.items():
                     mu = "{:.2f}".format(float(val[0][0]))
                     sigma = "{:.2f}".format(float(val[0][1]))
@@ -855,29 +826,29 @@ def pair_plots(img_base_path, base_url, delay, mode, indicators, statistics, exp
             logger.info(f'Finished getting pair plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             logged_response = {'msg' : response['msg'], 'corr_tables' : response['corr_tables']}
             logger.info(f'Result of pair plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
-            pairplot_imgs = response['pairplot_imgs']
-            corr_imgs = response['corr_imgs']
-            corr_tables = response['corr_tables']
+            reduced_indicators, pairplot_imgs = list(response['pairplot_imgs'].items())[0]
+            corr_imgs = response['corr_imgs'][reduced_indicators]
+            corr_tables = response['corr_tables'][reduced_indicators]
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
                 os.mkdir(img_dir_path)
             logger.info(f'Saving figures: pair plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
-            img_name_prefix1 = "_".join(['PairPlot', mode,'-'.join(experiment_names), '-'.join(indicators), *[f'{k}={v}' for k, v in kwargs.items()]])
-            img_name_prefix2 = "_".join(['Correlations', mode, '-'.join(indicators), *[f'{k}={v}' for k, v in kwargs.items()]])
-            for j, statistic in enumerate(statistics):
-                img_name1 = f'{img_name_prefix1}_statistic={statistic}'
-                img_data1 = bytes(pairplot_imgs[j], 'utf-8')
-                logger.info(f'Saving figure: {img_name1}')
-                with open(os.path.join(img_dir_path, img_name1), "wb") as fh:
-                    fh.write(base64.decodebytes(img_data1))
-                logger.info(f'Saved figure: {img_name1}')
-                for k, experiment in enumerate(experiment_names):
-                    logger.info(f'Correlation table for pair plots with:\nargs - {[base_url, mode, indicators, statistic, experiment]}\nkwargs - {kwargs}\ncorr_table: {corr_tables[j][k]}')
-                    img_name2 = f'{img_name_prefix2}_statistic={statistic}_experiment={experiment}'
-                    img_data2 = bytes(corr_imgs[j][k], 'utf-8')
-                    logger.info(f'Saving figure: {img_name2}')
-                    with open(os.path.join(img_dir_path, img_name2), "wb") as fh:
-                        fh.write(base64.decodebytes(img_data2))
-                    logger.info(f'Saved figure: {img_name2}')
+            pairplot_img_name_prefix = "_".join(['PairPlot', mode,'-'.join(experiment_names), reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
+            corr_img_name_prefix = "_".join(['Correlations', mode, reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
+            for statistic, pairplot_img_data in pairplot_imgs.items():
+                pairplot_img_name = f'{pairplot_img_name_prefix}_statistic={statistic}'
+                pairplot_img_bytes = bytes(pairplot_img_data, 'utf-8')
+                logger.info(f'Saving figure: {pairplot_img_name}')
+                with open(os.path.join(img_dir_path, pairplot_img_name), "wb") as fh:
+                    fh.write(base64.decodebytes(pairplot_img_bytes))
+                logger.info(f'Saved figure: {pairplot_img_name}')
+                for experiment, corr_img_data in corr_imgs[statistic].items():
+                    logger.info(f'Correlation table for pair plots with:\nargs - {[base_url, mode, indicators, statistic, experiment]}\nkwargs - {kwargs}\ncorr_table: {corr_tables[statistic][experiment]}')
+                    corr_img_name = f'{corr_img_name_prefix}_statistic={statistic}_experiment={experiment}'
+                    corr_img_bytes = bytes(corr_img_data, 'utf-8')
+                    logger.info(f'Saving figure: {corr_img_name}')
+                    with open(os.path.join(img_dir_path, corr_img_name), "wb") as fh:
+                        fh.write(base64.decodebytes(corr_img_bytes))
+                    logger.info(f'Saved figure: {corr_img_name}')
             logger.info(f'Finished saving figures: pair plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             return {
                 'func' : 'pair_plots',
@@ -950,18 +921,17 @@ def s_archive_plots(img_base_path, base_url, delay, archive, indicator, statisti
                 'exception' : traceback.format_exc()
             }
 
-def json_to_func_params(img_base_path, base_url, delay, func_info : dict):
+def json_to_func_params(img_base_path, base_url, delay, func_info : dict, p):
     func_params = []
     func_info_keys = list(func_info.keys())
     i = 0
     while func_info_keys:
         func_name = func_info_keys[i%len(func_info_keys)]
         func_params_list = func_info[func_name]
-        # func_params += [(func, [img_base_path, base_url, delay, *args], kwargs) for args, kwargs in func_params_list]
         if len(func_params_list) > 0: 
             func = globals()[func_name]
             args, kwargs = func_params_list.pop(0)
-            func_params += [(func, [img_base_path, base_url, delay*i, *args], kwargs)]
+            func_params += [(func, [img_base_path, base_url, delay*(i % p), *args], kwargs)]
         else:
             func_info_keys.pop(i%len(func_info_keys))
         i += 1
@@ -978,6 +948,8 @@ def main(parser : argparse.ArgumentParser):
     generate = argv.generate
 
     if generate:
+        # func_info = generate_pairplot_params(["est","full"], [], CORR_PLOT_INDICATORS, STATISTICS, 
+        #                                             EXPERIMENTS, POPULATIONS, [], ESTIMATORS, separate_experiments = False)
         func_info = generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)
         func_info = {**func_info, **generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
         func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
@@ -1004,7 +976,7 @@ def main(parser : argparse.ArgumentParser):
         logger.error(f'No file {func_info_path} exists')
         raise ValueError(f'No file {func_info_path} exists')
 
-    func_params = json_to_func_params(img_base_path, host_url, delay, func_info)
+    func_params = json_to_func_params(img_base_path, host_url, delay, func_info, p_num)
     if _concurrent:
         retrieved_plots = generic_mm_concurrent_execution(func_params, p_num, 'Finished retrieving plot')
     else:

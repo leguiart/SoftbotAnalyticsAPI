@@ -576,7 +576,7 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         plt.close(g.figure)
     return img_array
 
-def IndicatorPairPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000, lang = 'en'):
+def IndicatorPairPlots(indicators, statistics, population_type, experiment_names, estimator = None, bootsrapped_dist = False, n_boot = 10000, lang = 'en', separate_experiments = True):
     if not lang in LANG_DICTS:
         raise InvalidAPIUsage(f'Please specify a valid language choice as query string', status_code=404)
     lang_dict = LANG_DICTS[lang]
@@ -636,7 +636,114 @@ def IndicatorPairPlots(indicators, statistics, population_type, experiment_names
         raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
     
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
+
+    if separate_experiments:
+        pairplots_img_array, correlations_img_array, correlation_tables_array = pairplots_by_experiment(indicators, statistics, experiment_names, 
+                                                                                                        all_experiments_stats, estimator_func, 
+                                                                                                        bootsrapped_dist, exp_run_mapping, 
+                                                                                                        n_boot, estimator, lang_dict)
+    else:
+        pairplots_img_array, correlations_img_array, correlation_tables_array = pairplots(indicators, statistics, experiment_names, 
+                                                                                                        all_experiments_stats, estimator_func, 
+                                                                                                        bootsrapped_dist, exp_run_mapping, 
+                                                                                                        n_boot, estimator, lang_dict)
     
+    return pairplots_img_array, correlations_img_array, correlation_tables_array
+
+def pairplots(indicators, statistics, experiment_names, all_experiments_stats, estimator_func, bootsrapped_dist, exp_run_mapping, n_boot, estimator, lang_dict):
+    reduced_names_str = "_".join([INDICATORS_TO_ABR["_".join(indicator.split('_')[1:])] 
+                                             if any(prefix in indicator for prefix in ['parent', 'child']) 
+                                             else INDICATORS_TO_ABR[indicator] 
+                                             for indicator in indicators])
+    reduced_names_str += "_all"
+    pairplots_img_array = {reduced_names_str : {}}
+    correlations_img_array = {reduced_names_str : {}}
+    correlation_tables_array = {reduced_names_str : {}}
+    
+    for statistic in statistics:
+        df_list = []
+        compacted_indicators = set()
+        for experiment_name in experiment_names:
+            new_df = {}
+            for indicator in indicators:
+                if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                    continue
+                df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
+                if estimator_func:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    est = estimator_func(run_statistic_mat, axis=0)
+                    processed_data = est.tolist()
+                elif bootsrapped_dist:
+                    run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
+                    b = boot_dist(run_statistic_mat, n_boot=n_boot)
+                    processed_data = b.flatten().tolist()
+                else:
+                    processed_data = df[statistic].tolist()
+                compacted_indicators.add(compactify_indicator(indicator))
+                new_df[compactify_indicator(indicator)] = processed_data
+            new_df = pd.DataFrame(new_df)
+            df_list += [new_df]
+        
+        resulting_df = pd.concat(df_list, ignore_index=True)
+        for indicator_compact in compacted_indicators:
+            resulting_df[indicator_compact] = resulting_df[indicator_compact].astype('float')
+        
+        g = sns.pairplot(resulting_df, markers = 'o')
+        g.map_lower(sns.regplot, scatter_kws = {'edgecolors' : [(1., 1., 1., 0.)]})
+
+        if estimator:
+            g.figure.suptitle(lang_dict["pairplot_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator]), y=1.)
+        elif bootsrapped_dist:
+            g.figure.suptitle(lang_dict["pairplot_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y=1.)
+        else:
+            g.figure.suptitle(lang_dict["pairplot_title_template_all"].format(statistic=lang_dict[statistic]), y=1.)
+        buffer = io.BytesIO()
+        g.savefig(buffer, format='png')
+        buffer.seek(0)
+        data1 = buffer.read()
+        data1 = base64.b64encode(data1).decode()
+        pairplots_img_array[reduced_names_str][statistic] = data1  
+        plt.close(g.figure)
+        correlations_img_array[reduced_names_str][statistic] = {}
+        correlation_tables_array[reduced_names_str][statistic] = {}
+        correlation_table = resulting_df.corr()
+        correlation_table_np = correlation_table.to_numpy()
+
+        fig,ax = plt.subplots(figsize=correlation_table_np.shape)
+        ax.grid(visible = False)
+        cmap = mpl.colormaps['viridis']
+        norm = mpl.colors.Normalize()
+        pos = ax.imshow(correlation_table,norm=norm, cmap=cmap)
+        columns_count = len(compacted_indicators)
+        ax.set_xticks(range(columns_count), compacted_indicators, rotation=90)
+        ax.set_yticks(range(columns_count), compacted_indicators, rotation=45)
+
+        # Loop over data dimensions and create text annotations.
+        for i in range(len(compacted_indicators)):
+            for j in range(len(compacted_indicators)):
+                text = ax.text(j, i,  "{:.4f}".format(correlation_table.iloc[i, j]),
+                            ha="center", va="center", color="w")
+
+        fig.colorbar(pos, ax=ax, shrink=0.6, anchor=(0, 0.5))
+        # ax.xticks(rotation=90)
+        if estimator:
+            ax.set_title(lang_dict["corr_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator], experiment_name = 'todos los experimentos'), y=1.)
+        elif bootsrapped_dist:
+            ax.set_title(lang_dict["corr_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot], experiment_name = 'todos los experimentos'), y=1.)
+        else:
+            ax.set_title(lang_dict["corr_title_template_all"].format(statistic=lang_dict[statistic], experiment_name = 'todos los experimentos'), y=1.)
+        fig.tight_layout()
+        fig.canvas.draw()
+        data2 = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        data2 = data2.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        data2 = Image.fromarray(data2.astype('uint8')).convert('RGBA')
+        data2 = encode_image(data2)
+        correlations_img_array[reduced_names_str][statistic]['all'] = data2
+        plt.close(fig)
+        correlation_tables_array[reduced_names_str][statistic]['all'] = correlation_table_np.tolist()
+    return pairplots_img_array, correlations_img_array, correlation_tables_array
+
+def pairplots_by_experiment(indicators, statistics, experiment_names, all_experiments_stats, estimator_func, bootsrapped_dist, exp_run_mapping, n_boot, estimator, lang_dict):
     reduced_names_str = "_".join([INDICATORS_TO_ABR["_".join(indicator.split('_')[1:])] 
                                              if any(prefix in indicator for prefix in ['parent', 'child']) 
                                              else INDICATORS_TO_ABR[indicator] 
@@ -1283,26 +1390,28 @@ def home():
 def IndicatorPairPlotsRenderGET(mode):
     args = request.args
     population_type = args.get('population')
+    separate_experiments = args.get('separate_experiments')
     experiment_names = args.getlist('experiments')
     indicator_list = args.getlist('indicators')
     statistic_list = args.getlist('statistics')
     lang = parse_lang(args.get('lang'))
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    separate_experiments = separate_experiments is None or separate_experiments == "True"
     if mode == 'full':
-        paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang, separate_experiments=separate_experiments)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang, separate_experiments=separate_experiments)
         else:
-            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang, separate_experiments=separate_experiments)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang, separate_experiments=separate_experiments)
         else:
-            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            paiplot_img_array, corr_img_array, _ = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang, separate_experiments=separate_experiments)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
@@ -1321,20 +1430,21 @@ def IndicatorPairPlotsGET(mode):
     lang = parse_lang(args.get('lang'))
     indicator_list = PLOT_INDICATORS.copy() if len(indicator_list) == 1 and indicator_list[0] == 'all' else indicator_list
     statistic_list = STATISTICS if len(statistic_list) == 1 and statistic_list[0] == 'all' else statistic_list
+    separate_experiments = separate_experiments is not None and separate_experiments
     if mode == 'full':
-        paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang)
+        paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, lang=lang, separate_experiments=separate_experiments)
     elif mode == 'bootstrap_dist':
         n_boot = args.get('n_boot')
         if n_boot:
-            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang)
+            paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, n_boot=n_boot, lang=lang, separate_experiments=separate_experiments)
         else:
-            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang)
+            paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, bootsrapped_dist=True, lang=lang, separate_experiments=separate_experiments)
     elif mode == 'est':
         estimator = args.get('estimator')
         if estimator:
-            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang)
+            paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator=estimator, lang=lang, separate_experiments=separate_experiments)
         else:
-            paiplot_img_array, corr_img_array, corr_table_array  = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang)
+            paiplot_img_array, corr_img_array, corr_table_array = IndicatorPairPlots(indicator_list, statistic_list, population_type, experiment_names, estimator='average', lang=lang, separate_experiments=separate_experiments)
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
@@ -1766,5 +1876,5 @@ def ChooseWinnerGET(statistic):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-    #app.run(debug=True)
+    # app.run(debug=True)
     
