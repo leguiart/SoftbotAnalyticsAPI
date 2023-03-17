@@ -449,7 +449,7 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
         dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
-            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+            if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                 continue
             fig, ax = plt.subplots(ncols=1, sharey=True)
             for experiment_name in experiment_names:
@@ -666,7 +666,7 @@ def pairplots(indicators, statistics, experiment_names, all_experiments_stats, e
         for experiment_name in experiment_names:
             new_df = {}
             for indicator in indicators:
-                if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                     continue
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
                 if estimator_func:
@@ -758,7 +758,7 @@ def pairplots_by_experiment(indicators, statistics, experiment_names, all_experi
         for experiment_name in experiment_names:
             new_df = {}
             for indicator in indicators:
-                if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+                if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                     continue
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
                 if estimator_func:
@@ -903,7 +903,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
         dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
-            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+            if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                 continue
             df_list = []
             for experiment_name in experiment_names:
@@ -1012,7 +1012,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
         dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
-            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+            if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                 continue
             df_list = []
             for experiment_name in experiment_names:
@@ -1121,7 +1121,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         dict_of_img_dicts[indicator] = {}
         indicator_compact = compactify_indicator(indicator)
         for statistic in statistics:
-            if indicator in NO_STD_INDICATORS and statistic in ["worst","std","median","average"]:
+            if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                 continue
             df_list = []
             for experiment_name in experiment_names:
