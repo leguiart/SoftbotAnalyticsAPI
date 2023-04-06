@@ -329,9 +329,17 @@ sns.set(style="darkgrid")
 app = Flask(__name__)
 CORS(app)
 
+def svg_from_fig(fig):
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)
+    data = buffer.read()
+    data = base64.b64encode(data).decode()
+    return data
+
 def encode_image(img : Image):
     buffer = io.BytesIO()
-    img.save(buffer, 'png')
+    img.save(buffer, 'eps')
     buffer.seek(0)
     data = buffer.read()
     data = base64.b64encode(data).decode()
@@ -451,7 +459,7 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                 continue
-            fig, ax = plt.subplots(ncols=1, sharey=True)
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
                 run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
@@ -466,10 +474,11 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
                 ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}")
             else:
                 ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}")
-            fig.canvas.draw()
-            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+            # fig.canvas.draw()
+            # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            # dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+            dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
     return dict_of_img_dicts
 
@@ -567,12 +576,12 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
             g.figure.suptitle(lang_dict["jointkde_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y = 1.)
         else:
             g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1.)
-        buffer = io.BytesIO()
-        g.savefig(buffer, format='png')
-        buffer.seek(0)
-        data = buffer.read()
-        data = base64.b64encode(data).decode()
-        img_array += [data]
+        # buffer = io.BytesIO()
+        # g.savefig(buffer, format='png')
+        # buffer.seek(0)
+        # data = buffer.read()
+        # data = base64.b64encode(data).decode()
+        img_array += [svg_from_fig(g)]
         plt.close(g.figure)
     return img_array
 
@@ -939,10 +948,11 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             else:
                 g.set(title=lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
 
-            fig.canvas.draw()
-            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+            # fig.canvas.draw()
+            # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            # dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+            dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
             plt.close(g.figure)
     return dict_of_img_dicts
@@ -1048,10 +1058,11 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             else:
                 g.set(title=lang_dict["violin_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
 
-            fig.canvas.draw()
-            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+            # fig.canvas.draw()
+            # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            # dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+            dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
             plt.close(g.figure)
     return dict_of_img_dicts
@@ -1154,12 +1165,12 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             else:
                 g.set(title=lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
 
-            buffer = io.BytesIO()
-            g.savefig(buffer, format='png')
-            buffer.seek(0)
-            data = buffer.read()
-            data = base64.b64encode(data).decode()
-            dict_of_img_dicts[indicator][statistic] = data
+            # buffer = io.BytesIO()
+            # g.savefig(buffer, format='svg')
+            # buffer.seek(0)
+            # data = buffer.read()
+            # data = base64.b64encode(data).decode()
+            dict_of_img_dicts[indicator][statistic] = svg_from_fig(g)
             plt.close(g.figure)
     return dict_of_img_dicts
 
@@ -1251,10 +1262,11 @@ def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang
                       method='linear').reshape(X.shape)
         col = ax.pcolormesh(X,Y,Z.T)
         fig.colorbar(col, ax=ax, location='right')
-        fig.canvas.draw()
-        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+        # fig.canvas.draw()
+        # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        # img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+        img_array += [svg_from_fig(fig)]
         plt.close(fig)
     return img_array
 
@@ -1299,7 +1311,7 @@ def ChooseWinner(indicators, statistic, population_type, experiment_names):
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
 
     # Compute indicator scores per algo
-    alpha = 0.05
+    alpha = 0.05 / len(experiment_names)
     indicator_algo_scores = dict(zip(indicators, [{exp : 0 for exp in experiment_names} for _ in indicators]))
     condorcet_scores = dict(zip(experiment_names, [{exp : 0 for exp in experiment_names} for _ in experiment_names]))
     permutation_counts = {}
@@ -1481,7 +1493,7 @@ def IndicatorJointKdePlotRenderGET(indicator1, indicator2, mode):
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "".join([f'<img src="data:image/png;base64,{img}">' for img in img_array])
+    return "".join([f'<img src="data:image/svg+xml;base64,{img}">' for img in img_array])
 
 @app.route("/IndicatorJointKdePlot/indicator1/<indicator1>/indicator2/<indicator2>/mode/<mode>", methods = ["GET"])
 def IndicatorJointKdePlotGET(indicator1, indicator2, mode):
@@ -1540,7 +1552,7 @@ def IndicatorKdePlotsRenderGET(mode):
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{img}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
+    return "<br>".join(["".join([f'<img src="data:image/svg+xml;base64,{img}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorKdePlots/mode/<mode>", methods = ["GET"])
 def IndicatorKdePlotsGET(mode):
@@ -1601,7 +1613,7 @@ def IndicatorBoxPlotsRenderGET(mode):
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
+    return "<br>".join(["".join([f'<img src="data:image/svg+xml;base64,{img}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorBoxPlots/mode/<mode>", methods = ["GET"])
 def IndicatorBoxPlotsGET(mode):
@@ -1630,12 +1642,10 @@ def IndicatorBoxPlotsGET(mode):
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
+    # first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
     return jsonify({
-            'msg': 'success', 
-            'size': [first_img.width, first_img.height], 
-            'format': first_img.format,
-            'img': {indicator : {stat : encode_image(img) for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
+            'msg': 'success',
+            'img': {indicator : {stat : img for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
         })
 
 @app.route("/IndicatorViolinPlotsRender/mode/<mode>", methods = ["GET"])
@@ -1665,7 +1675,7 @@ def IndicatorViolinPlotsRenderGET(mode):
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
+    return "<br>".join(["".join([f'<img src="data:image/svg+xml;base64,{img}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorViolinPlots/mode/<mode>", methods = ["GET"])
 def IndicatorViolinPlotsGET(mode):
@@ -1694,12 +1704,10 @@ def IndicatorViolinPlotsGET(mode):
     else:
         raise InvalidAPIUsage(f'Mode {mode} is not valid!', status_code=404)
     gc.collect()
-    first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
+    # first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
     return jsonify({
             'msg': 'success', 
-            'size': [first_img.width, first_img.height], 
-            'format': first_img.format,
-            'img': {indicator : {stat : encode_image(img) for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
+            'img': {indicator : {stat : img for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
         })
 
 @app.route("/IndicatorBsConvergencePlotsRender/n_boot/<n_boot>", methods = ["GET"])
@@ -1717,7 +1725,8 @@ def IndicatorBsConvergencePlotsRenderGET(n_boot):
     else:
         dict_of_img_dicts = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
     gc.collect()
-    return "<br>".join(["".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
+    # return "<br>".join(["".join([f'<img src="data:image/svg+xml;base64,{encode_image(img)}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
+    return "<br>".join(["".join([f'<img src="data:image/svg+xml;base64,{img}">' for img in img_dict.values()]) for img_dict in dict_of_img_dicts.values()])
 
 @app.route("/IndicatorBsConvergencePlots/n_boot/<n_boot>", methods = ["GET"])
 def IndicatorBsConvergencePlotsGET(n_boot):
@@ -1734,12 +1743,10 @@ def IndicatorBsConvergencePlotsGET(n_boot):
     else:
         dict_of_img_dicts = IndicatorBsConvergencePlots(indicator_list, statistic_list, population_type, experiment_names, n_boot=n_boot, lang=lang)
     gc.collect()
-    first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
+    # first_img = list(list(dict_of_img_dicts.values())[0].values())[0]
     return jsonify({
             'msg': 'success', 
-            'size': [first_img.width, first_img.height], 
-            'format': first_img.format,
-            'img': {indicator : {stat : encode_image(img) for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
+            'img': {indicator : {stat : img for stat, img in dict_of_imgs.items()} for indicator, dict_of_imgs in dict_of_img_dicts.items()}
         })
 
 @app.route("/IndicatorPlotRunRender/experiment/<experiment_name>/indicator/<indicator>/run/<run_number>/statistic/<statistic>", methods = ["GET"])
@@ -1840,7 +1847,7 @@ def StructuredArchivePlotsRenderGET(archive, indicator, statistic):
     lang = parse_lang(args.get('lang'))
     img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
     gc.collect()
-    return "".join([f'<img src="data:image/png;base64,{encode_image(img)}">' for img in img_array])
+    return "".join([f'<img src="data:image/svg+xml;base64,{img}">' for img in img_array])
 
 @app.route("/StructuredArchivePlots/archive/<archive>/indicator/<indicator>/statistic/<statistic>", methods = ["GET"])
 def StructuredArchivePlotsGET(archive, indicator, statistic):
@@ -1850,10 +1857,8 @@ def StructuredArchivePlotsGET(archive, indicator, statistic):
     img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
     gc.collect()
     return jsonify({
-        'msg': 'success', 
-        'size': [[img.width, img.height] for img in img_array], 
-        'format': img_array[0].format,
-        'img': [encode_image(img) for img in img_array]
+        'msg': 'success',
+        'img': [img for img in img_array]
     })
 
 @app.route("/ChooseWinner/statistic/<statistic>", methods = ["GET"])

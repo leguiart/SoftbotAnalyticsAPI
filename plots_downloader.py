@@ -30,6 +30,94 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
+
+class KeyDict(defaultdict):
+    def __missing__(self, key):
+        return key
+
+STATISTICS = ["best",
+              "median",
+              "average"]
+ESTIMATORS = STATISTICS
+MODES = ["bootstrap_dist",
+         "est",
+         "full"]
+POPULATIONS = ["default"]
+N_BOOT = [100, 1000, 2000]
+ARCHIVES = ["f_me_archive",
+            "an_me_archive",
+            "novelty_archive_un",
+            "novelty_archive_an"]
+ARCHIVE_INDICATORS = ["fitness",
+            "unaligned_novelty",
+            "aligned_novelty"]
+EXPERIMENTS = ["ME","MNSLC","QN","NSLC","SO"]
+# CHOOSE WINNER
+# WINNING_INDICATORS = [
+#     "fitness",
+#     "unaligned_novelty",
+#     "aligned_novelty",
+#     "gene_diversity",
+#     "control_gene_div",
+#     "morpho_gene_div",
+#     "morpho_div",
+#     "endpoint_div",
+#     "unaligned_novelty_archive_fit",
+#     "aligned_novelty_archive_fit",
+#     "unaligned_novelty_archive_novelty",
+#     "aligned_novelty_archive_novelty",
+#     "qd-score_ff",
+#     "qd-score_fun",
+#     "qd-score_fan",
+#     "qd-score_anf",
+#     "qd-score_anun",
+#     "qd-score_anan",
+#     "coverage"
+#     ]
+
+WINNING_INDICATORS = [
+    "fitness",
+    "aligned_novelty",
+    "qd-score_ff",
+    "qd-score_anan",
+    "morpho_div",
+    "unaligned_novelty",
+    "qd-score_fun",
+    "coverage", 
+    "gene_diversity",
+    "control_gene_div",
+    "morpho_gene_div"
+]
+
+NO_STD_INDICATORS = [
+    "qd-score_ff",
+    "qd-score_fun",
+    "qd-score_fan",
+    "qd-score_anf",
+    "qd-score_anun",
+    "qd-score_anan",
+    "coverage"
+]
+
+# PAIRPLOTS
+TASK_PERFORMANCE_INDICATORS = [
+    "fitness",
+    "aligned_novelty",
+    "qd-score_ff",
+    "qd-score_anan"
+]
+PHENOTYPE_DIVERSITY_INDICATORS = [
+    "morpho_div",
+    "unaligned_novelty",
+    "qd-score_fun",
+    "coverage", 
+]
+GENE_DIVERSITY_INDICATORS = [
+    "gene_diversity",
+    "control_gene_div",
+    "morpho_gene_div"
+]
+
 # Clasificacion acordada para elegir al ganador
 # TASK_PERFORMANCE_INDICATORS = [
 #     "fitness",
@@ -54,98 +142,45 @@ logger.addHandler(ch)
 #     "gene_diversity"
 # ]
 
-class KeyDict(defaultdict):
-    def __missing__(self, key):
-        return key
+# TASK_PERFORMANCE_INDICATORS = [
+#     "fitness",
+#     "aligned_novelty",
+#     "endpoint_div",
+#     "unaligned_novelty_archive_fit",
+#     "aligned_novelty_archive_fit",
+#     "qd-score_ff",
+#     "qd-score_fan",
+#     "qd-score_anf",
+#     "qd-score_anan",
+# ]
+# PHENOTYPE_DIVERSITY_INDICATORS = [
+#     "morphology",
+#     "morphology_active",
+#     "morphology_passive",
+#     "morpho_div",
+#     "unaligned_novelty",
+#     "unaligned_novelty_archive_novelty",
+#     "aligned_novelty_archive_novelty",
+#     "qd-score_fun",
+#     "qd-score_anun",
+#     "coverage", 
+# ]
+# GENE_DIVERSITY_INDICATORS = [
+#     "gene_diversity",
+#     "control_gene_div",
+#     "morpho_gene_div",
+#     "control_cppn_nodes",
+#     "control_cppn_edges",
+#     "control_cppn_ws",
+#     "morpho_cppn_nodes",
+#     "morpho_cppn_edges",
+#     "morpho_cppn_ws",
+#     "simplified_gene_div",
+#     "simplified_gene_ne_div",
+#     "simplified_gene_nws_div"
+# ]
 
-STATISTICS = ["best",
-              "median",
-              "average"]
-ESTIMATORS = STATISTICS
-MODES = ["bootstrap_dist",
-         "est",
-         "full"]
-POPULATIONS = ["default"]
-N_BOOT = [100, 1000, 2000]
-ARCHIVES = ["f_me_archive",
-            "an_me_archive",
-            "novelty_archive_un",
-            "novelty_archive_an"]
-ARCHIVE_INDICATORS = ["fitness",
-            "unaligned_novelty",
-            "aligned_novelty"]
-EXPERIMENTS = ["ME","MNSLC","QN","NSLC","SO"]
-# CHOOSE WINNER
-WINNING_INDICATORS = [
-    "fitness",
-    "unaligned_novelty",
-    "aligned_novelty",
-    "gene_diversity",
-    "control_gene_div",
-    "morpho_gene_div",
-    "morpho_div",
-    "endpoint_div",
-    "unaligned_novelty_archive_fit",
-    "aligned_novelty_archive_fit",
-    "unaligned_novelty_archive_novelty",
-    "aligned_novelty_archive_novelty",
-    "qd-score_ff",
-    "qd-score_fun",
-    "qd-score_fan",
-    "qd-score_anf",
-    "qd-score_anun",
-    "qd-score_anan",
-    "coverage"
-    ]
 
-NO_STD_INDICATORS = [
-    "qd-score_ff",
-    "qd-score_fun",
-    "qd-score_fan",
-    "qd-score_anf",
-    "qd-score_anun",
-    "qd-score_anan",
-    "coverage"
-    ]
-
-# PAIRPLOTS
-TASK_PERFORMANCE_INDICATORS = [
-    "fitness",
-    "aligned_novelty",
-    "endpoint_div",
-    "unaligned_novelty_archive_fit",
-    "aligned_novelty_archive_fit",
-    "qd-score_ff",
-    "qd-score_fan",
-    "qd-score_anf",
-    "qd-score_anan",
-]
-PHENOTYPE_DIVERSITY_INDICATORS = [
-    "morphology",
-    "morphology_active",
-    "morphology_passive",
-    "morpho_div",
-    "unaligned_novelty",
-    "unaligned_novelty_archive_novelty",
-    "aligned_novelty_archive_novelty",
-    "qd-score_fun",
-    "qd-score_anun",
-    "coverage", 
-]
-GENE_DIVERSITY_INDICATORS = [
-    "gene_diversity",
-    "control_gene_div",
-    "morpho_gene_div",
-    "control_cppn_nodes",
-    "control_cppn_edges",
-    "control_cppn_ws",
-    "morpho_cppn_nodes",
-    "morpho_cppn_edges",
-    "morpho_cppn_ws",
-    "simplified_gene_div",
-    "simplified_gene_ne_div",
-    "simplified_gene_nws_div"
-]
 CORR_PLOT_INDICATORS = TASK_PERFORMANCE_INDICATORS + PHENOTYPE_DIVERSITY_INDICATORS + GENE_DIVERSITY_INDICATORS
 # JOINTPLOTS
 STATE_SPACE_INDICATORS = [
@@ -277,14 +312,14 @@ INDICATORS_TO_COMPACT = KeyDict(dict,
             "control_gene_div" : (to_math_it, r'D_{gc}'),
             "morpho_gene_div" : (to_math_it, r'D_{gm}'),
             "morpho_div" : (to_math_it, 'D_m'),
-            "endpoint_div" : (to_math_it, r'D_{\vec r(t=T)}'),
+            "endpoint_div" : (to_math_it, r'D_{\vec r(T)}'),
             "trayectory_div" : (to_math_it, r'D_{\vec s}'),
-            "inipoint_x" : (to_math_it, r'\vec r_{x}(t=0)'),
-            "inipoint_y": (to_math_it, r'\vec r_{y}(t=0)'),
-            "inipoint_z": (to_math_it, r'\vec r_{z}(t=0)'),
-            "endpoint_x": (to_math_it, r'\vec r_{x}(t=T)'),
-            "endpoint_y": (to_math_it, r'\vec r_{y}(t=T)'),
-            "endpoint_z": (to_math_it, r'\vec r_{z}(t=T)'),
+            "inipoint_x" : (to_math_it, r'\vec r_{x}(0)'),
+            "inipoint_y": (to_math_it, r'\vec r_{y}(0)'),
+            "inipoint_z": (to_math_it, r'\vec r_{z}(0)'),
+            "endpoint_x": (to_math_it, r'\vec r_{x}(T)'),
+            "endpoint_y": (to_math_it, r'\vec r_{y}(T)'),
+            "endpoint_z": (to_math_it, r'\vec r_{z}(T)'),
             "trayectory_x": (to_math_it, r'(\vec s_{x}'),
             "trayectory_y": (to_math_it, r'\vec s_{y}'),
             "trayectory_z": (to_math_it, r'\vec s_{z}'),
@@ -294,12 +329,12 @@ INDICATORS_TO_COMPACT = KeyDict(dict,
             "aligned_novelty_archive_fit" : (to_math_tt, 'F_a'),
             "unaligned_novelty_archive_novelty" : (to_math_tt, 'N_u'),
             "aligned_novelty_archive_novelty" : (to_math_tt, 'N_a'),
-            "qd-score_ff" : (to_math_tt, r'Q_{ff}'),
-            "qd-score_fun" : (to_math_tt, r'Q_{fun}'),
-            "qd-score_fan" : (to_math_tt, r'Q_{fan}'),
-            "qd-score_anf" : (to_math_tt, r'Q_{anf}'),
-            "qd-score_anun" : (to_math_tt, r'Q_{anun}'),
-            "qd-score_anan" : (to_math_tt, r'Q_{anan}'),
+            "qd-score_ff" : (to_math_tt, r'QD_{ff}'),
+            "qd-score_fun" : (to_math_tt, r'QD_{fun}'),
+            "qd-score_fan" : (to_math_tt, r'QD_{fan}'),
+            "qd-score_anf" : (to_math_tt, r'QD_{anf}'),
+            "qd-score_anun" : (to_math_tt, r'QD_{anun}'),
+            "qd-score_anan" : (to_math_tt, r'QD_{anan}'),
             "coverage" : (to_math_cal, "C"),            
             "control_cppn_nodes" : (to_math_rm, "C-CPPN_n"),
             "control_cppn_edges" : (to_math_rm, "C-CPPN_e"),
@@ -669,14 +704,14 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
 
             condorcet_scores_d : dict[str, list] = {k : list(map(lambda x : x[1], list(v.items()))) for k, v in condorcet_scores.items()}
             condorcet_scores_table = pd.DataFrame(condorcet_scores_d, index = list(condorcet_scores.keys())).transpose()
-            response['condorcet_scores_latex'] = condorcet_scores_table.to_latex(index=True, caption="Método de Condorcet",float_format="%.4f", escape=False)
+            response['condorcet_scores_latex'] = condorcet_scores_table.to_latex(index=True, caption="Método de Condorcet",float_format="%.4E", escape=False)
 
             borda_count_d : dict[str, list] = {"Posición" : list(range(1, len(list(borda_count.keys())) + 1)) + ["Conteo de Borda"], **{k : places_count[k] + [borda_count[k]] for k in places_count.keys()}}
             borda_count_table = pd.DataFrame(borda_count_d)
-            response["borda_count_latex"] = borda_count_table.to_latex(index=False, caption="Conteo de Borda",float_format="%.4f", escape=False)
+            response["borda_count_latex"] = borda_count_table.to_latex(index=False, caption="Conteo de Borda",float_format="%.4E", escape=False)
 
             permutation_counts_table = pd.DataFrame([k.split(',') + [v] for k, v in permutation_counts.items()], columns=list(range(1, len(experiment_names) + 1)) + ["Indicencias"])
-            response["permutation_counts_latex"] = permutation_counts_table.to_latex(index=False, caption="Incidencia de permutaciones",float_format="%.4f", escape=False)
+            response["permutation_counts_latex"] = permutation_counts_table.to_latex(index=False, caption="Incidencia de permutaciones",float_format="%.4E", escape=False)
 
             experiment_names_ias = list(indicator_algo_scores[list(indicator_algo_scores.keys())[0]].keys())
             indicator_algo_scores_d : dict[str, list]= dict(zip(["Indicador"] + experiment_names_ias, 
@@ -684,7 +719,7 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
                                                                 [[indicator_algo_scores[indicator][experiment] for indicator in indicator_algo_scores.keys()]
                                                                 for experiment in experiment_names_ias]))
             indicator_algo_scores_table = pd.DataFrame(indicator_algo_scores_d)
-            response["indicator_algo_scores_latex"] = indicator_algo_scores_table.to_latex(index=False, caption="Puntuaciones por algoritmo en cada indicador",float_format="%.4f", escape=False)
+            response["indicator_algo_scores_latex"] = indicator_algo_scores_table.to_latex(index=False, caption="Puntuaciones por algoritmo en cada indicador",float_format="%.4E", escape=False)
             
             # experiment_names_iats = list(list(indicator_algo_tables.items())[0][1].keys())
             indicator_algo_stats = dict(zip(["Indicador"] + experiment_names, [[] for _ in range(len(experiment_names) + 1)]))
@@ -695,7 +730,7 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
                     sigma = "{:.2f}".format(float(val[0][1]))
                     indicator_algo_stats[algo] += [f"{mu}({sigma})"]
             indicator_algo_stats_table = pd.DataFrame(indicator_algo_stats)
-            response["indicator_algo_stats_latex"] = indicator_algo_stats_table.to_latex(index=False, caption="Indicadores por algoritmo",float_format="%.2f", escape=False)
+            response["indicator_algo_stats_latex"] = indicator_algo_stats_table.to_latex(index=False, caption="Indicadores por algoritmo",float_format="%.2E", escape=False)
             
             code_to_latex_symbols = {0 : r"$\leftrightarrow$", 1 : r"$\downarrow$", 2 : r"$\uparrow$"}
             inverted_code_to_latex_symbols = {0 : r"$\leftrightarrow$", 1 : r"$\uparrow$", 2 : r"$\downarrow$"}
@@ -712,17 +747,17 @@ def choose_winner(img_base_path, base_url, delay, statistic, indicators, experim
                             indicator_algo_table = indicator_algo_tables[indicator][algo2][1]
                             val = indicator_algo_table[algo1]
                             p_val = val[2]
-                            result = inverted_code_to_latex_symbols[val[3]]
-                            cell_val = f"{'{:.4f}'.format(p_val)} {result}"
+                            result = code_to_latex_symbols[val[3]]
+                            cell_val = f"{'{:.4E}'.format(p_val)} {result}"
                         else:
                             indicator_algo_table = indicator_algo_tables[indicator][algo1][1]
                             val = indicator_algo_table[algo2]
                             p_val = val[2]
-                            result = code_to_latex_symbols[val[3]]
-                            cell_val = f"{'{:.4f}'.format(p_val)}  {result}"
+                            result = inverted_code_to_latex_symbols[val[3]]
+                            cell_val = f"{'{:.4E}'.format(p_val)}  {result}"
                         indicator_algo_d[algo1] += [cell_val]
                 indicator_algo_table = pd.DataFrame(indicator_algo_d)
-                indicator_algo_tables_d[indicator] = indicator_algo_table.to_latex(index=False, float_format="%.4f", caption=f"Resultados de encuentros para {compactify_indicator(indicator)}", escape=False)
+                indicator_algo_tables_d[indicator] = indicator_algo_table.to_latex(index=False, float_format="%.4E", caption=f"Resultados de encuentros para {compactify_indicator(indicator)}", escape=False)
             response['indicator_algo_tables_latex'] = indicator_algo_tables_d
             json_object = json.dumps(response, indent=4)
             with open(f"{os.path.join(img_dir_path, tables_name)}.json", "w") as outfile:
@@ -832,8 +867,8 @@ def pair_plots(img_base_path, base_url, delay, mode, indicators, statistics, exp
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
                 os.mkdir(img_dir_path)
             logger.info(f'Saving figures: pair plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
-            pairplot_img_name_prefix = "_".join(['PairPlot', mode,'-'.join(experiment_names), reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
-            corr_img_name_prefix = "_".join(['Correlations', mode, reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
+            pairplot_img_name_prefix = "_".join(['PP', mode, '-'.join(experiment_names), reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
+            corr_img_name_prefix = "_".join(['C', mode, reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
             for statistic, pairplot_img_data in pairplot_imgs.items():
                 pairplot_img_name = f'{pairplot_img_name_prefix}_statistic={statistic}'
                 pairplot_img_bytes = bytes(pairplot_img_data, 'utf-8')
@@ -948,21 +983,22 @@ def main(parser : argparse.ArgumentParser):
     generate = argv.generate
 
     if generate:
-        # func_info = generate_pairplot_params(["est","full"], [], CORR_PLOT_INDICATORS, STATISTICS, 
-        #                                             EXPERIMENTS, POPULATIONS, [], ESTIMATORS, separate_experiments = False)
+        # func_info = generate_pairplot_params(["full"], [], CORR_PLOT_INDICATORS, STATISTICS, 
+        #                                             EXPERIMENTS, POPULATIONS, [], ESTIMATORS)
         func_info = generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)
-        func_info = {**func_info, **generate_convergence_params(ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
-        func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
-        func_info = {**func_info, **generate_boxplot_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
-        func_info = {**func_info, **generate_violinplot_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
-        func_info = {**func_info, **generate_kde_params(MODES, ALL_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
-        func_info = {**func_info, **generate_jointplot_params(MODES, STATE_SPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])}
-        func_info['joint_plots'] += generate_jointplot_params(MODES, GRAPH_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
-        func_info['joint_plots'] += generate_jointplot_params(MODES, MORPHO_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
-        func_info['joint_plots'] += generate_jointplot_params(MODES, OBJECTIVESPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
-        func_info = {**func_info, **generate_pairplot_params(MODES, [TASK_PERFORMANCE_INDICATORS, PHENOTYPE_DIVERSITY_INDICATORS, 
-                                                                     GENE_DIVERSITY_INDICATORS], CORR_PLOT_INDICATORS, STATISTICS, 
-                                                                     EXPERIMENTS, POPULATIONS, [N_BOOT[0]], ESTIMATORS)}
+        # func_info = {**func_info, **generate_convergence_params(NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
+        # func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
+        # func_info = {**func_info, **generate_boxplot_params(MODES, NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
+        # func_info = {**func_info, **generate_violinplot_params(MODES, NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
+        # func_info = {**func_info, **generate_kde_params(MODES, NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
+        # func_info = {**func_info, **generate_jointplot_params(MODES, STATE_SPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])}
+        # func_info['joint_plots'] += generate_jointplot_params(MODES, GRAPH_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
+        # func_info['joint_plots'] += generate_jointplot_params(MODES, MORPHO_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
+        # func_info['joint_plots'] += generate_jointplot_params(MODES, OBJECTIVESPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
+        # func_info = {**func_info, **generate_pairplot_params(["est","full"], [TASK_PERFORMANCE_INDICATORS, PHENOTYPE_DIVERSITY_INDICATORS, 
+        #                                                                         GENE_DIVERSITY_INDICATORS], [], STATISTICS, 
+        #                                                                         EXPERIMENTS, POPULATIONS, [], ESTIMATORS, 
+        #                                                                         separate_experiments=False)}
         for key in func_info.keys():
             print(f"({key}, {len(func_info[key])})")
         json_object = json.dumps(func_info, indent=4)
