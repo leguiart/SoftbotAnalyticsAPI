@@ -1331,7 +1331,7 @@ def ChooseWinner(indicators, statistic, population_type, experiment_names):
                 data2 = df2[statistic].to_numpy()
                 mu2 = data2.mean()
                 sigma2 = data2.std()
-                res = stats.wilcoxon(data1, y = data2, correction=True)
+                res = stats.wilcoxon(data1, y = data2)
                 if res.pvalue < alpha:
                     # significantly different
                     if mu1 > mu2:
