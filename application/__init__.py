@@ -585,6 +585,7 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         else:
             g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1., fontsize = 'x-large')
         # Legend title
+        ax.get_legend().set_title('experimento')
         ax.get_legend().get_title().set_fontsize('large')
         
         # Legend texts
@@ -949,8 +950,8 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
-            ax.set_ylabel('experiment', fontsize = 'x-large')
-            ax.set_xlabel(indicator_compact, fontsize = 'x-large')
+            ax.set_ylabel(indicator_compact, fontsize = 'x-large')
+            ax.set_xlabel('experimento', fontsize = 'x-large')
             ax.xaxis.set_tick_params(labelsize='x-large')
             ax.yaxis.set_tick_params(labelsize='x-large')
             if estimator:
@@ -1159,8 +1160,8 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=8, aspect=1.2)
-            g.ax.set_ylabel(indicator_compact, fontsize = 'x-large')
-            g.ax.set_xlabel('Conteo', fontsize = 'x-large')
+            g.ax.set_ylabel('Densidad', fontsize = 'x-large')
+            g.ax.set_xlabel(indicator_compact, fontsize = 'x-large')
             g.ax.xaxis.set_tick_params(labelsize='x-large')
             g.ax.yaxis.set_tick_params(labelsize='x-large')
             if estimator:
@@ -1170,6 +1171,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             else:
                 g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = 'x-large')
             # Legend title
+            g.legend.set_title('experimento')
             g.legend.get_title().set_fontsize('large')
 
             # Legend texts
