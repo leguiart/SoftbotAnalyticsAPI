@@ -1159,8 +1159,8 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=8, aspect=1.2)
-            g.ax.set_ylabel('Conteo', fontsize = 'x-large')
-            g.ax.set_xlabel(indicator_compact, fontsize = 'x-large')
+            g.ax.set_ylabel(indicator_compact, fontsize = 'x-large')
+            g.ax.set_xlabel('Conteo', fontsize = 'x-large')
             g.ax.xaxis.set_tick_params(labelsize='x-large')
             g.ax.yaxis.set_tick_params(labelsize='x-large')
             if estimator:
