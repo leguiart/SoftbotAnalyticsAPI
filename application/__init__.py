@@ -1170,11 +1170,11 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             else:
                 g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = 'x-large')
             # Legend title
-            g.legend.get_title().set_fontsize('x-large')
+            g.legend.get_title().set_fontsize('large')
 
             # Legend texts
             for text in g.legend.texts:
-                text.set_fontsize('x-large')
+                text.set_fontsize('large')
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(g)
             plt.close(g.figure)
     return dict_of_img_dicts
