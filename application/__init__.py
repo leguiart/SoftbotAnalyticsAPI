@@ -19,6 +19,14 @@ from collections import defaultdict
 
 from application.data.dal import Dal
 
+# params = {'legend.fontsize': 'x-large',
+#           'figure.figsize': (15, 5),
+#          'axes.labelsize': 'x-large',
+#          'axes.titlesize':'x-large',
+#          'xtick.labelsize':'x-large',
+#          'ytick.labelsize':'x-large'}
+# plt.rcParams.update(params)
+
 class KeyDict(defaultdict):
     def __missing__(self, key):
         return key
@@ -465,19 +473,17 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
                 run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
                 if len(experiment_names) > 1:
                     tsplotboot(ax, run_statistic_mat, n_boot = n_boot, ci=95, label=experiment_name)
-                    ax.legend()
+                    ax.legend(fontsize = 'large')
                 else:
                     tsplotboot(ax, run_statistic_mat, n_boot = n_boot, ci=95)
-            ax.set_ylabel(f"{indicator_compact} ({lang_dict[statistic]})")
-            ax.set_xlabel(lang_dict["Generation"])
+            ax.set_ylabel(f"{indicator_compact} ({lang_dict[statistic]})", fontsize = 'x-large')
+            ax.set_xlabel(lang_dict["Generation"], fontsize = 'x-large')
+            ax.xaxis.set_tick_params(labelsize='x-large')
+            ax.yaxis.set_tick_params(labelsize='x-large')
             if len(experiment_names) > 1:
-                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}")
+                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}", fontsize = 'x-large')
             else:
-                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}")
-            # fig.canvas.draw()
-            # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            # dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}", fontsize = 'x-large')
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
     return dict_of_img_dicts
@@ -565,22 +571,25 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
             df_list += [new_df]
         
         resulting_df =  pd.concat(df_list, ignore_index=True)
-        # fig,ax = plt.subplots(ncols=1)
         g = sns.jointplot(data=resulting_df, x=compact_indicator1, y=compact_indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
-        # g = sns.jointplot(data=resulting_df, x=indicator1, y=indicator2,  height=9, ratio=2)
-        # g.plot_joint(sns.kdeplot, hue='experiment', zorder=0, levels=20)
         g.plot_marginals(sns.histplot, kde = True)
+        ax = g.figure.get_axes()[0]
+        ax.set_ylabel(compact_indicator2, fontsize = 'x-large')
+        ax.set_xlabel(compact_indicator1, fontsize = 'x-large')
+        ax.xaxis.set_tick_params(labelsize='x-large')
+        ax.yaxis.set_tick_params(labelsize='x-large')
         if estimator:
-            g.figure.suptitle(lang_dict["jointkde_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator]), y = 1.)
+            g.figure.suptitle(lang_dict["jointkde_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator]), y = 1., fontsize = 'x-large')
         elif bootsrapped_dist:
-            g.figure.suptitle(lang_dict["jointkde_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y = 1.)
+            g.figure.suptitle(lang_dict["jointkde_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y = 1., fontsize = 'x-large')
         else:
-            g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1.)
-        # buffer = io.BytesIO()
-        # g.savefig(buffer, format='png')
-        # buffer.seek(0)
-        # data = buffer.read()
-        # data = base64.b64encode(data).decode()
+            g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1., fontsize = 'x-large')
+        # Legend title
+        ax.get_legend().get_title().set_fontsize('large')
+        
+        # Legend texts
+        for text in ax.get_legend().get_texts():
+            text.set_fontsize('large')
         img_array += [svg_from_fig(g)]
         plt.close(g.figure)
     return img_array
@@ -939,19 +948,18 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             
             
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
-            # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
             g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
+            ax.set_ylabel('experiment', fontsize = 'x-large')
+            ax.set_xlabel(indicator_compact, fontsize = 'x-large')
+            ax.xaxis.set_tick_params(labelsize='x-large')
+            ax.yaxis.set_tick_params(labelsize='x-large')
             if estimator:
-                g.set(title=lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
+                ax.set_title(lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = 'x-large')
             elif bootsrapped_dist:
-                g.set(title=lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]))
+                ax.set_title(lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = 'x-large')
             else:
-                g.set(title=lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
+                ax.set_title(lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = 'x-large')
 
-            # fig.canvas.draw()
-            # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            # dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
             plt.close(g.figure)
@@ -1047,9 +1055,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
-            
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
-            # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
             g = sns.violinplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
             if estimator:
                 g.set(title=lang_dict["violin_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
@@ -1058,10 +1064,6 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             else:
                 g.set(title=lang_dict["violin_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
 
-            # fig.canvas.draw()
-            # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            # dict_of_img_dicts[indicator][statistic] = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
             plt.close(g.figure)
@@ -1156,20 +1158,23 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
-            # g = sns.displot(data=resulting_df, x = indicator, hue='experiment', kind="kde", height=5, aspect=1.5)
-            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kde=True, height=8, aspect=1.2)
+            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=8, aspect=1.2)
+            g.ax.set_ylabel('Conteo', fontsize = 'x-large')
+            g.ax.set_xlabel(indicator_compact, fontsize = 'x-large')
+            g.ax.xaxis.set_tick_params(labelsize='x-large')
+            g.ax.yaxis.set_tick_params(labelsize='x-large')
             if estimator:
-                g.set(title=lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
+                g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = 'x-large')
             elif bootsrapped_dist:
-                g.set(title=lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]))
+                g.ax.set_title(lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = 'x-large')
             else:
-                g.set(title=lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact))
+                g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = 'x-large')
+            # Legend title
+            g.legend.get_title().set_fontsize('x-large')
 
-            # buffer = io.BytesIO()
-            # g.savefig(buffer, format='svg')
-            # buffer.seek(0)
-            # data = buffer.read()
-            # data = base64.b64encode(data).decode()
+            # Legend texts
+            for text in g.legend.texts:
+                text.set_fontsize('x-large')
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(g)
             plt.close(g.figure)
     return dict_of_img_dicts
@@ -1197,7 +1202,7 @@ def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang
             raise InvalidAPIUsage(f'No data from runs available for {experiment_name} experiment!', status_code=404)
         run_ids[experiment_name] = experiment_runs["run_id"]
     
-    experiment_archives = {}
+    experiment_archives : dict[str, np.ndarray] = {}
     for experiment_name in experiment_names:
         run_archive = dal.get_archives_json(run_ids[experiment_name])
         if not run_archive["archives_json"]:
@@ -1248,27 +1253,26 @@ def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang
             bc_space += [list(element)]
         bc_space = np.array(bc_space)
 
-        # xreg = np.linspace(0, total_voxels, total_voxels)
-        # yreg = np.linspace(0, total_voxels, total_voxels)
         xreg = np.linspace(0, total_voxels, x_points)
         yreg = np.linspace(0, total_voxels, y_points)
         X,Y = np.meshgrid(xreg,yreg)
-        fig, (ax) = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
-        ax.set_xlabel(lang_dict['Active Voxels'])
-        ax.set_ylabel(lang_dict['Passive Voxels'])
-        ax.set_title(lang_dict["archives_title_template"].format(statistic=lang_dict[statistic], indicator=lang_dict[indicator], experiment_name = experiment_name))
+        fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
+        ax.set_xlabel(lang_dict['Active Voxels'], fontsize = 'x-large')
+        ax.set_ylabel(lang_dict['Passive Voxels'], fontsize = 'x-large')
+        
+        ax.xaxis.set_tick_params(labelsize='x-large')
+        ax.yaxis.set_tick_params(labelsize='x-large')
+
         x, y, z = bc_space[:,0], bc_space[:,1], flattened_feat_map
         Z = spinterp.griddata(np.vstack((x,y)).T,z,(X,Y),
                       method='linear').reshape(X.shape)
         col = ax.pcolormesh(X,Y,Z.T)
-        fig.colorbar(col, ax=ax, location='right')
-        # fig.canvas.draw()
-        # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-        # imarray = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        # img_array += [Image.fromarray(imarray.astype('uint8')).convert('RGBA')]
+        c_bar = fig.colorbar(col, ax=ax, location='right')
+        c_bar.ax.tick_params(labelsize='x-large')
+
         img_array += [svg_from_fig(fig)]
         plt.close(fig)
-    return img_array
+    return img_array, {experiment_name : archive.tolist() for experiment_name, archive in experiment_archives.items()}
 
 def ChooseWinner(indicators, statistic, population_type, experiment_names):
     if not validate_statistic_list([statistic]):
@@ -1311,7 +1315,7 @@ def ChooseWinner(indicators, statistic, population_type, experiment_names):
     all_experiments_stats = pd.DataFrame(all_experiments_stats)
 
     # Compute indicator scores per algo
-    alpha = 0.05 / len(experiment_names)
+    alpha = 0.05 / (len(experiment_names) * (len(experiment_names) - 1) * len(indicators))
     indicator_algo_scores = dict(zip(indicators, [{exp : 0 for exp in experiment_names} for _ in indicators]))
     condorcet_scores = dict(zip(experiment_names, [{exp : 0 for exp in experiment_names} for _ in experiment_names]))
     permutation_counts = {}
@@ -1845,7 +1849,7 @@ def StructuredArchivePlotsRenderGET(archive, indicator, statistic):
     args = request.args
     experiment_names = args.getlist('experiments')
     lang = parse_lang(args.get('lang'))
-    img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
+    img_array, _ = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
     gc.collect()
     return "".join([f'<img src="data:image/svg+xml;base64,{img}">' for img in img_array])
 
@@ -1854,11 +1858,12 @@ def StructuredArchivePlotsGET(archive, indicator, statistic):
     args = request.args
     experiment_names = args.getlist('experiments')
     lang = parse_lang(args.get('lang'))
-    img_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
+    img_array, archive_array = StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang=lang)
     gc.collect()
     return jsonify({
         'msg': 'success',
-        'img': [img for img in img_array]
+        'archive' : archive_array,
+        'img': img_array
     })
 
 @app.route("/ChooseWinner/statistic/<statistic>", methods = ["GET"])
