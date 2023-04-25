@@ -470,7 +470,7 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                 continue
-            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
                 run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
@@ -951,7 +951,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
             
-            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
             ax.set_ylabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
             ax.set_xlabel('experimento', fontsize = FIGURES_FONT_SIZE)
@@ -1059,7 +1059,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
-            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             g = sns.violinplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
             if estimator:
                 g.set(title=lang_dict["violin_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
@@ -1162,7 +1162,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
-            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=12, aspect=1.2)
+            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=10, aspect=1.2)
             g.ax.set_ylabel('Densidad', fontsize = FIGURES_FONT_SIZE)
             g.ax.set_xlabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
             g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
@@ -1261,7 +1261,7 @@ def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang
         xreg = np.linspace(0, total_voxels, x_points)
         yreg = np.linspace(0, total_voxels, y_points)
         X,Y = np.meshgrid(xreg,yreg)
-        fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
+        fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
         ax.set_xlabel(lang_dict['Active Voxels'], fontsize = FIGURES_FONT_SIZE)
         ax.set_ylabel(lang_dict['Passive Voxels'], fontsize = FIGURES_FONT_SIZE)
         
