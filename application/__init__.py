@@ -951,7 +951,7 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
             
-            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
             g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
             ax.set_ylabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
             ax.set_xlabel('experimento', fontsize = FIGURES_FONT_SIZE)
