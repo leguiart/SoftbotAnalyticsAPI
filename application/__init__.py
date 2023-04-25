@@ -19,17 +19,20 @@ from collections import defaultdict
 
 from application.data.dal import Dal
 
-# params = {'legend.fontsize': 'xx-large',
+# params = {'legend.fontsize': 30,
 #           'figure.figsize': (15, 5),
-#          'axes.labelsize': 'xx-large',
-#          'axes.titlesize':'xx-large',
-#          'xtick.labelsize':'xx-large',
-#          'ytick.labelsize':'xx-large'}
+#          'axes.labelsize': 30,
+#          'axes.titlesize':30,
+#          'xtick.labelsize':30,
+#          'ytick.labelsize':30}
 # plt.rcParams.update(params)
 
 class KeyDict(defaultdict):
     def __missing__(self, key):
         return key
+
+FIGURES_FONT_SIZE = 22
+LEGENDS_FONT_SIZE = 18
 
 INDICATOR_STATS_SET = [
     "fitness",
@@ -467,23 +470,23 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
         for statistic in statistics:
             if indicator in NO_STD_INDICATORS and statistic in ["std"]:
                 continue
-            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
             for experiment_name in experiment_names:
                 df = all_experiments_stats[(all_experiments_stats['indicator'] == indicator) & (all_experiments_stats['experiment_name'] == experiment_name)]
                 run_statistic_mat = max_size_run_statistics_ts(df, statistic, exp_run_mapping[experiment_name])
                 if len(experiment_names) > 1:
                     tsplotboot(ax, run_statistic_mat, n_boot = n_boot, ci=95, label=experiment_name)
-                    ax.legend(fontsize = 'large')
+                    ax.legend(fontsize = LEGENDS_FONT_SIZE)
                 else:
                     tsplotboot(ax, run_statistic_mat, n_boot = n_boot, ci=95)
-            ax.set_ylabel(f"{indicator_compact} ({lang_dict[statistic]})", fontsize = 'xx-large')
-            ax.set_xlabel(lang_dict["Generation"], fontsize = 'xx-large')
-            ax.xaxis.set_tick_params(labelsize='xx-large')
-            ax.yaxis.set_tick_params(labelsize='xx-large')
+            ax.set_ylabel(f"{indicator_compact} ({lang_dict[statistic]})", fontsize = FIGURES_FONT_SIZE)
+            ax.set_xlabel(lang_dict["Generation"], fontsize = FIGURES_FONT_SIZE)
+            ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
+            ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             if len(experiment_names) > 1:
-                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}", fontsize = 'xx-large')
+                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}", fontsize = FIGURES_FONT_SIZE)
             else:
-                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}", fontsize = 'xx-large')
+                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}", fontsize = FIGURES_FONT_SIZE)
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
     return dict_of_img_dicts
@@ -571,26 +574,26 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
             df_list += [new_df]
         
         resulting_df =  pd.concat(df_list, ignore_index=True)
-        g = sns.jointplot(data=resulting_df, x=compact_indicator1, y=compact_indicator2, kind= 'kde', hue='experiment', levels = 24, height=9, ratio=2)
+        g = sns.jointplot(data=resulting_df, x=compact_indicator1, y=compact_indicator2, kind= 'kde', hue='experiment', levels = 24, height=12, ratio=2)
         g.plot_marginals(sns.histplot, kde = True)
         ax = g.figure.get_axes()[0]
-        ax.set_ylabel(compact_indicator2, fontsize = 'xx-large')
-        ax.set_xlabel(compact_indicator1, fontsize = 'xx-large')
-        ax.xaxis.set_tick_params(labelsize='xx-large')
-        ax.yaxis.set_tick_params(labelsize='xx-large')
+        ax.set_ylabel(compact_indicator2, fontsize = FIGURES_FONT_SIZE)
+        ax.set_xlabel(compact_indicator1, fontsize = FIGURES_FONT_SIZE)
+        ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
+        ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
         if estimator:
-            g.figure.suptitle(lang_dict["jointkde_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator]), y = 1., fontsize = 'xx-large')
+            g.figure.suptitle(lang_dict["jointkde_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator]), y = 1., fontsize = FIGURES_FONT_SIZE)
         elif bootsrapped_dist:
-            g.figure.suptitle(lang_dict["jointkde_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y = 1., fontsize = 'xx-large')
+            g.figure.suptitle(lang_dict["jointkde_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y = 1., fontsize = FIGURES_FONT_SIZE)
         else:
-            g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1., fontsize = 'xx-large')
+            g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1., fontsize = FIGURES_FONT_SIZE)
         # Legend title
         ax.get_legend().set_title('experimento')
-        ax.get_legend().get_title().set_fontsize('large')
+        ax.get_legend().get_title().set_fontsize(LEGENDS_FONT_SIZE)
         
         # Legend texts
         for text in ax.get_legend().get_texts():
-            text.set_fontsize('large')
+            text.set_fontsize(LEGENDS_FONT_SIZE)
         img_array += [svg_from_fig(g)]
         plt.close(g.figure)
     return img_array
@@ -948,18 +951,18 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
             
-            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
             g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
-            ax.set_ylabel(indicator_compact, fontsize = 'xx-large')
-            ax.set_xlabel('experimento', fontsize = 'xx-large')
-            ax.xaxis.set_tick_params(labelsize='xx-large')
-            ax.yaxis.set_tick_params(labelsize='xx-large')
+            ax.set_ylabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
+            ax.set_xlabel('experimento', fontsize = FIGURES_FONT_SIZE)
+            ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
+            ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             if estimator:
-                ax.set_title(lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = 'xx-large')
+                ax.set_title(lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
             elif bootsrapped_dist:
-                ax.set_title(lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = 'xx-large')
+                ax.set_title(lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE)
             else:
-                ax.set_title(lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = 'xx-large')
+                ax.set_title(lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
 
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
@@ -1056,7 +1059,7 @@ def IndicatorViolinPlots(indicators, statistics, population_type, experiment_nam
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             
-            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
+            fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
             g = sns.violinplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
             if estimator:
                 g.set(title=lang_dict["violin_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]))
@@ -1159,24 +1162,24 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
-            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=9, aspect=1.2)
-            g.ax.set_ylabel('Densidad', fontsize = 'xx-large')
-            g.ax.set_xlabel(indicator_compact, fontsize = 'xx-large')
-            g.ax.xaxis.set_tick_params(labelsize='xx-large')
-            g.ax.yaxis.set_tick_params(labelsize='xx-large')
+            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=12, aspect=1.2)
+            g.ax.set_ylabel('Densidad', fontsize = FIGURES_FONT_SIZE)
+            g.ax.set_xlabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
+            g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
+            g.ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             if estimator:
-                g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = 'xx-large')
+                g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
             elif bootsrapped_dist:
-                g.ax.set_title(lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = 'xx-large')
+                g.ax.set_title(lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE)
             else:
-                g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = 'xx-large')
+                g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
             # Legend title
             g.legend.set_title('experimento')
-            g.legend.get_title().set_fontsize('large')
+            g.legend.get_title().set_fontsize(LEGENDS_FONT_SIZE)
 
             # Legend texts
             for text in g.legend.texts:
-                text.set_fontsize('large')
+                text.set_fontsize(LEGENDS_FONT_SIZE)
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(g)
             plt.close(g.figure)
     return dict_of_img_dicts
@@ -1258,19 +1261,19 @@ def StructuredArchivePlots(archive, indicator, statistic, experiment_names, lang
         xreg = np.linspace(0, total_voxels, x_points)
         yreg = np.linspace(0, total_voxels, y_points)
         X,Y = np.meshgrid(xreg,yreg)
-        fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(11,9))
-        ax.set_xlabel(lang_dict['Active Voxels'], fontsize = 'xx-large')
-        ax.set_ylabel(lang_dict['Passive Voxels'], fontsize = 'xx-large')
+        fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(12,10))
+        ax.set_xlabel(lang_dict['Active Voxels'], fontsize = FIGURES_FONT_SIZE)
+        ax.set_ylabel(lang_dict['Passive Voxels'], fontsize = FIGURES_FONT_SIZE)
         
-        ax.xaxis.set_tick_params(labelsize='xx-large')
-        ax.yaxis.set_tick_params(labelsize='xx-large')
+        ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
+        ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
 
         x, y, z = bc_space[:,0], bc_space[:,1], flattened_feat_map
         Z = spinterp.griddata(np.vstack((x,y)).T,z,(X,Y),
                       method='linear').reshape(X.shape)
         col = ax.pcolormesh(X,Y,Z.T)
         c_bar = fig.colorbar(col, ax=ax, location='right')
-        c_bar.ax.tick_params(labelsize='xx-large')
+        c_bar.ax.tick_params(labelsize=LEGENDS_FONT_SIZE)
 
         img_array += [svg_from_fig(fig)]
         plt.close(fig)
