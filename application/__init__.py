@@ -1162,24 +1162,24 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
-            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=9, aspect=1.1)
-            g.ax.set_ylabel('Densidad', fontsize = FIGURES_FONT_SIZE)
-            g.ax.set_xlabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
-            g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
-            g.ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
+            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=9, aspect=1.2)
+            g.ax.set_ylabel('Densidad', fontsize = FIGURES_FONT_SIZE + 2)
+            g.ax.set_xlabel(indicator_compact, fontsize = FIGURES_FONT_SIZE + 2)
+            g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE + 2)
+            g.ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE + 2)
             if estimator:
-                g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
+                g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE + 2)
             elif bootsrapped_dist:
-                g.ax.set_title(lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE)
+                g.ax.set_title(lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE + 2)
             else:
-                g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
+                g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE + 2)
             # Legend title
             g.legend.set_title('experimento')
-            g.legend.get_title().set_fontsize(LEGENDS_FONT_SIZE)
+            g.legend.get_title().set_fontsize(LEGENDS_FONT_SIZE + 2)
 
             # Legend texts
             for text in g.legend.texts:
-                text.set_fontsize(LEGENDS_FONT_SIZE)
+                text.set_fontsize(LEGENDS_FONT_SIZE + 2)
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(g)
             plt.close(g.figure)
     return dict_of_img_dicts
