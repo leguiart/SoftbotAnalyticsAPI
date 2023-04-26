@@ -1162,7 +1162,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
-            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=8, aspect=1.2)
+            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=9, aspect=1.1)
             g.ax.set_ylabel('Densidad', fontsize = FIGURES_FONT_SIZE)
             g.ax.set_xlabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
             g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
