@@ -316,15 +316,15 @@ LANG_DICTS = {
         "corr_title_template_est" : "Correlaciones de {estimator} de {statistic} generacional ({experiment_name})",
         "corr_title_template_boot" : "Correlaciones de {statistic} generacional con bootstrap (n={n_boot}) ({experiment_name})",
         "corr_title_template_all" : "Correlaciones de la distribución completa de {statistic} generacional ({experiment_name})",
-        "box_title_template_est" : "Boxplots ({estimator}) {indicator} ({statistic})",
-        "box_title_template_boot" : "Boxplots {indicator} ({statistic} bootstrap n={n_boot})",
-        "box_title_template_all" : "Boxplots (distribución completa {statistic} {indicator})",
-        "violin_title_template_est" : "Violinplots ({estimator} {indicator} {statistic})",
-        "violin_title_template_boot" : "Violinplots {indicator} ({statistic} bootstrap n={n_boot})",
-        "violin_title_template_all" : "Violinplots (distribución completa {statistic} {indicator})",
-        "kde_title_template_est" : "KDEs ({estimator} {indicator} {statistic})",
-        "kde_title_template_boot" : "KDEs {indicator} ({statistic} bootstrap n={n_boot})",
-        "kde_title_template_all" : "KDEs (distribución completa {statistic} {indicator})",
+        "box_title_template_est" : "Boxplots {indicator}({statistic}), {estimator}",
+        "box_title_template_boot" : "Boxplots {indicator}({statistic}), bootstrap n={n_boot}",
+        "box_title_template_all" : "Boxplots {indicator}({statistic}), distribución completa",
+        "violin_title_template_est" : "Violinplots {indicator}({statistic}), {estimator}",
+        "violin_title_template_boot" : "Violinplots {indicator}({statistic}), bootstrap n={n_boot}",
+        "violin_title_template_all" : "Violinplots {indicator}({statistic}), {estimator}",
+        "kde_title_template_est" : "KDEs {indicator}({statistic}), {estimator}",
+        "kde_title_template_boot" : "KDEs {indicator}({statistic}), bootstrap n={n_boot}",
+        "kde_title_template_all" : "KDEs {indicator}({statistic}), distribución completa",
         "best" : "mejor",
         "worst" : "peor",
         "average" : "promedio",
@@ -1162,7 +1162,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
         
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
-            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=9, aspect=1.2)
+            g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=8, aspect=1.2)
             g.ax.set_ylabel('Densidad', fontsize = FIGURES_FONT_SIZE)
             g.ax.set_xlabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
             g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
