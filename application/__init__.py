@@ -1,31 +1,25 @@
 
-from ast import Dict
+
 import gc
-import itertools
-import numpy as np
 import io
 import base64
+import itertools
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.interpolate as spinterp
 
-from scipy import stats
+from ast import Dict
 from PIL import Image
+from scipy import stats
 from flask_cors import CORS
-from flask import Flask, jsonify, request
 from collections import defaultdict
+from flask import Flask, jsonify, request
 
 from application.data.dal import Dal
 
-# params = {'legend.fontsize': 30,
-#           'figure.figsize': (15, 5),
-#          'axes.labelsize': 30,
-#          'axes.titlesize':30,
-#          'xtick.labelsize':30,
-#          'ytick.labelsize':30}
-# plt.rcParams.update(params)
 
 class KeyDict(defaultdict):
     def __missing__(self, key):

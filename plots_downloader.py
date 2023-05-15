@@ -45,9 +45,7 @@ MODES = ["bootstrap_dist",
 POPULATIONS = ["default"]
 N_BOOT = [100, 1000, 2000]
 ARCHIVES = ["f_me_archive",
-            "an_me_archive",
-            "novelty_archive_un",
-            "novelty_archive_an"]
+            "an_me_archive"]
 ARCHIVE_INDICATORS = ["fitness",
             "unaligned_novelty",
             "aligned_novelty"]
@@ -116,6 +114,15 @@ GENE_DIVERSITY_INDICATORS = [
     "gene_diversity",
     "control_gene_div",
     "morpho_gene_div"
+]
+
+GRAPH_INDICATORS = [
+    "control_cppn_nodes",
+    "control_cppn_edges",
+    "control_cppn_ws",
+    "morpho_cppn_nodes",
+    "morpho_cppn_edges",
+    "morpho_cppn_ws"
 ]
 
 # Clasificacion acordada para elegir al ganador
@@ -502,7 +509,7 @@ def kde_distributions(img_base_path, base_url, delay, mode, indicators, statisti
             img_name_prefix = "_".join(['KdePlot', mode,'-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
             for indicator, img_dict in imgs.items():
                 for statistic, img in img_dict.items():
-                    img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}'
+                    img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}.svg'
                     img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
@@ -542,7 +549,7 @@ def boxplots(img_base_path, base_url, delay, mode, indicators, statistics, exper
             logger.info(f'Start getting box plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             response = httpRequester.boxplots(mode, indicators, statistics, experiment_names, **kwargs)
             logger.info(f'Finished getting box plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
-            logged_response = {'msg' : response['msg'], 'size' : response['size'], 'format' : response['format']}
+            logged_response = {'msg' : response['msg']}
             logger.info(f'Result of box plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
             imgs : dict[str, dict[str, str]] = response['img']
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
@@ -551,7 +558,7 @@ def boxplots(img_base_path, base_url, delay, mode, indicators, statistics, exper
             img_name_prefix = "_".join(['BoxPlot', mode,'-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
             for indicator, img_dict in imgs.items():
                 for statistic, img in img_dict.items():
-                    img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}'
+                    img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}.svg'
                     img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
@@ -591,7 +598,7 @@ def violinplots(img_base_path, base_url, delay, mode, indicators, statistics, ex
             logger.info(f'Start getting violin plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
             response = httpRequester.violinplots(mode, indicators, statistics, experiment_names, **kwargs)
             logger.info(f'Finished getting violin plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}')
-            logged_response = {'msg' : response['msg'], 'size' : response['size'], 'format' : response['format']}
+            logged_response = {'msg' : response['msg']}
             logger.info(f'Result of violin plots with:\nargs - {[base_url, mode, indicators, statistics, experiment_names]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
             imgs : dict[str, dict[str, str]] = response['img']
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
@@ -600,7 +607,7 @@ def violinplots(img_base_path, base_url, delay, mode, indicators, statistics, ex
             img_name_prefix = "_".join(['ViolinPlot', mode,'-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
             for indicator, img_dict in imgs.items():
                 for statistic, img in img_dict.items():
-                    img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}'
+                    img_name = f'{img_name_prefix}_indicator={indicator}_statistic={statistic}.svg'
                     img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
@@ -640,7 +647,7 @@ def convergence_plots(img_base_path, base_url, delay, indicators, statistics, ex
             logger.info(f'Start getting convergence plots with:\nargs - {[base_url,  indicators, statistics, experiment_names, n_boot]}\nkwargs - {kwargs}')
             response = httpRequester.bs_convergence(indicators, statistics, experiment_names, n_boot=str(n_boot), **kwargs)
             logger.info(f'Finished getting convergence plots with:\nargs - {[base_url,  indicators, statistics, experiment_names, n_boot]}\nkwargs - {kwargs}')
-            logged_response = {'msg' : response['msg'], 'size' : response['size'], 'format' : response['format']}
+            logged_response = {'msg' : response['msg']}
             logger.info(f'Result of convergence plots with:\nargs - {[base_url,  indicators, statistics, experiment_names, n_boot]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
             imgs : dict[str, dict[str, str]] = response['img']
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
@@ -649,7 +656,7 @@ def convergence_plots(img_base_path, base_url, delay, indicators, statistics, ex
             img_name_prefix = "_".join(['ConvergencePlot', '-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
             for indicator, img_dict in imgs.items():
                 for statistic, img in img_dict.items():
-                    img_name = f'{img_name_prefix}_nboot={n_boot}_indicator={indicator}_statistic={statistic}'
+                    img_name = f'{img_name_prefix}_nboot={n_boot}_indicator={indicator}_statistic={statistic}.svg'
                     img_data = bytes(img, 'utf-8')
                     logger.info(f'Saving figure: {img_name}')
                     with open(os.path.join(img_dir_path, img_name), "wb") as fh:
@@ -819,7 +826,7 @@ def joint_plots(img_base_path, base_url, delay, mode, indicator1, indicator2, st
             logger.info(f'Saving figures: joint kde plots with:\nargs - {[base_url, mode, indicator1, indicator2, statistics, experiment_names]}\nkwargs - {kwargs}')
             img_name_prefix = "_".join(['JointPlot', mode,'-'.join(experiment_names), *[f'{k}={v}' for k, v in kwargs.items()]])
             for j, statistic in enumerate(statistics):
-                img_name = f'{img_name_prefix}_indicator1={indicator1}_indicator2={indicator2}_statistic={statistic}'
+                img_name = f'{img_name_prefix}_indicator1={indicator1}_indicator2={indicator2}_statistic={statistic}.svg'
                 img_data = bytes(imgs[j], 'utf-8')
                 logger.info(f'Saving figure: {img_name}')
                 with open(os.path.join(img_dir_path, img_name), "wb") as fh:
@@ -870,7 +877,7 @@ def pair_plots(img_base_path, base_url, delay, mode, indicators, statistics, exp
             pairplot_img_name_prefix = "_".join(['PP', mode, '-'.join(experiment_names), reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
             corr_img_name_prefix = "_".join(['C', mode, reduced_indicators, *[f'{k}={v}' for k, v in kwargs.items()]])
             for statistic, pairplot_img_data in pairplot_imgs.items():
-                pairplot_img_name = f'{pairplot_img_name_prefix}_statistic={statistic}'
+                pairplot_img_name = f'{pairplot_img_name_prefix}_statistic={statistic}.svg'
                 pairplot_img_bytes = bytes(pairplot_img_data, 'utf-8')
                 logger.info(f'Saving figure: {pairplot_img_name}')
                 with open(os.path.join(img_dir_path, pairplot_img_name), "wb") as fh:
@@ -878,7 +885,7 @@ def pair_plots(img_base_path, base_url, delay, mode, indicators, statistics, exp
                 logger.info(f'Saved figure: {pairplot_img_name}')
                 for experiment, corr_img_data in corr_imgs[statistic].items():
                     logger.info(f'Correlation table for pair plots with:\nargs - {[base_url, mode, indicators, statistic, experiment]}\nkwargs - {kwargs}\ncorr_table: {corr_tables[statistic][experiment]}')
-                    corr_img_name = f'{corr_img_name_prefix}_statistic={statistic}_experiment={experiment}'
+                    corr_img_name = f'{corr_img_name_prefix}_statistic={statistic}_experiment={experiment}.svg'
                     corr_img_bytes = bytes(corr_img_data, 'utf-8')
                     logger.info(f'Saving figure: {corr_img_name}')
                     with open(os.path.join(img_dir_path, corr_img_name), "wb") as fh:
@@ -918,19 +925,24 @@ def s_archive_plots(img_base_path, base_url, delay, archive, indicator, statisti
             logger.info(f'Start getting structured archive plots with:\nargs - {[base_url, archive, indicator, statistic, experiment_names]}\nkwargs - {kwargs}')
             response = httpRequester.structured_archive_plot(archive, indicator, statistic, experiment_names, **kwargs)
             logger.info(f'Finished getting structured archive plots with:\nargs - {[base_url, archive, indicator, statistic, experiment_names]}\nkwargs - {kwargs}')
-            logged_response = {'msg' : response['msg'], 'size' : response['size'], 'format' : response['format']}
+            logged_response = {'msg' : response['msg']}
             logger.info(f'Result of structured archive plots with:\nargs - {[base_url, archive, indicator, statistic,experiment_names]}\nkwargs - {kwargs}\nresponse:\n{logged_response}')
             archive_imgs = response['img']
+            archives = response['archive']
             if not (os.path.exists(img_dir_path) and os.path.isdir(img_dir_path)):
                 os.mkdir(img_dir_path)
             logger.info(f'Saving figures: structured archive plots with:\nargs - {[base_url, archive, indicator, statistic, experiment_names]}\nkwargs - {kwargs}')
             img_name_prefix1 = "_".join(['SArchivePlot', archive, indicator, statistic, *[f'{k}={v}' for k, v in kwargs.items()]])
             for i, experiment in enumerate(experiment_names):
-                img_name = f'{img_name_prefix1}_experiment={experiment}'
+                img_name = f'{img_name_prefix1}_experiment={experiment}.svg'
+                json_name = f'{img_name_prefix1}_experiment={experiment}.json'
                 img_data = bytes(archive_imgs[i], 'utf-8')
+                archive_data = archives[experiment]
                 logger.info(f'Saving figure: {img_name}')
                 with open(os.path.join(img_dir_path, img_name), "wb") as fh:
                     fh.write(base64.decodebytes(img_data))
+                with open(os.path.join(img_dir_path, json_name), "w") as fh_json:
+                    fh_json.write(json.dumps({"archive_data" : archive_data}, indent=4))
                 logger.info(f'Saved figure: {img_name}')
 
             logger.info(f'Finished saving figures: structured archive plots with:\nargs - {[base_url,archive, indicator, statistic,experiment_names]}\nkwargs - {kwargs}')
@@ -985,12 +997,16 @@ def main(parser : argparse.ArgumentParser):
     if generate:
         # func_info = generate_pairplot_params(["full"], [], CORR_PLOT_INDICATORS, STATISTICS, 
         #                                             EXPERIMENTS, POPULATIONS, [], ESTIMATORS)
-        func_info = generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)
-        # func_info = {**func_info, **generate_convergence_params(NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT)}
-        # func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
-        # func_info = {**func_info, **generate_boxplot_params(MODES, NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
-        # func_info = {**func_info, **generate_violinplot_params(MODES, NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
-        # func_info = {**func_info, **generate_kde_params(MODES, NO_STD_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, N_BOOT, ESTIMATORS)}
+        # func_info = generate_kde_params(["bootstrap_dist"], WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [1000], ESTIMATORS)
+        # func_info = generate_convergence_params(WINNING_INDICATORS + GRAPH_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [1000])
+        func_info = generate_jointplot_params(["est"], STATE_SPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [], [ESTIMATORS[2]])
+        func_info = {**func_info, **generate_choosewinner_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS)}
+        func_info = {**func_info, **generate_convergence_params(WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [1000])}
+        func_info = {**func_info, **generate_sarchive_params(ARCHIVES, ARCHIVE_INDICATORS, STATISTICS, EXPERIMENTS)}
+        func_info = {**func_info, **generate_boxplot_params(["full"], WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [], ESTIMATORS)}
+        func_info = {**func_info, **generate_violinplot_params(["full"], WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [], ESTIMATORS)}
+        func_info = {**func_info, **generate_kde_params(["bootstrap_dist"], WINNING_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [1000], ESTIMATORS)}
+        # func_info = {**func_info, **generate_jointplot_params(["est"], STATE_SPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [], [ESTIMATORS[2]])}
         # func_info = {**func_info, **generate_jointplot_params(MODES, STATE_SPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])}
         # func_info['joint_plots'] += generate_jointplot_params(MODES, GRAPH_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
         # func_info['joint_plots'] += generate_jointplot_params(MODES, MORPHO_DESIGNSPACE_INDICATORS, STATISTICS, EXPERIMENTS, POPULATIONS, [N_BOOT[0]], [ESTIMATORS[2]])['joint_plots']
