@@ -25,8 +25,10 @@ class KeyDict(defaultdict):
     def __missing__(self, key):
         return key
 
-FIGURES_FONT_SIZE = 25
-LEGENDS_FONT_SIZE = 20
+# FIGURES_FONT_SIZE = 25
+# LEGENDS_FONT_SIZE = 20
+FIGURES_FONT_SIZE = 'xx-large'
+LEGENDS_FONT_SIZE = 'large'
 
 INDICATOR_STATS_SET = [
     "fitness",
@@ -279,30 +281,30 @@ STATISTICS = ["best",
 LANG_DICTS = {
     "en" : KeyDict(dict, {
         "archives_title_template" : "{indicator} {statistic} feature map for {experiment_name} experiment",
-        "jointkde_title_template_est" : "Joint KDE of {estimator} of generational {statistic}",
-        "jointkde_title_template_boot" : "Joint KDE of bootstrapped (n={n_boot}) generational {statistic}",
-        "jointkde_title_template_all" : "Joint KDE plots of full generational {statistic} distribution",
-        "pairplot_title_template_est" : "Regression/Scatter plots of {estimator} of generational {statistic}",
-        "pairplot_title_template_boot" : "Regression/Scatter plots of bootstrapped (n={n_boot}) generational {statistic}",
-        "pairplot_title_template_all" : "Regression/Scatter plots of full generational {statistic} distribution",
-        "corr_title_template_est" : "Correlations of {estimator} of generational {statistic} ({experiment_name})",
-        "corr_title_template_boot" : "Correlations of bootstrapped (n={n_boot}) generational {statistic} ({experiment_name})",
-        "corr_title_template_all" : "Correlationns of full generational {statistic} distribution ({experiment_name})",
-        "box_title_template_est" : "Boxplot of {estimator} of generational {indicator} {statistic}",
-        "box_title_template_boot" : "Boxplot of bootstrapped (n={n_boot}) generational {indicator} {statistic}",
-        "box_title_template_all" : "Boxplot of full generational {indicator} {statistic} distribution",
-        "violin_title_template_est" : "Violinplot of {estimator} of generational {indicator} {statistic}",
-        "violin_title_template_boot" : "Violinplot of bootstrapped (n={n_boot}) generational {indicator} {statistic}",
-        "violin_title_template_all" : "Violinplot of full generational {indicator} {statistic} distribution",
-        "kde_title_template_est" : "KDE plot of {estimator} of generational {indicator} {statistic}",
-        "kde_title_template_boot" : "KDE plot of bootstrapped (n={n_boot}) generational {indicator} {statistic}",
-        "kde_title_template_all" : "KDE plot of full generational {indicator} {statistic} distribution",
+        "jointkde_title_template_est" : "Joint KDE of {estimator} {statistic}",
+        "jointkde_title_template_boot" : "Joint KDE of bootstrapped (n={n_boot}) {statistic}",
+        "jointkde_title_template_all" : "Joint KDE plots of full {statistic} distribution",
+        "pairplot_title_template_est" : "Regression/Scatter plots of {estimator} {statistic}",
+        "pairplot_title_template_boot" : "Regression/Scatter plots of bootstrapped (n={n_boot}) {statistic}",
+        "pairplot_title_template_all" : "Regression/Scatter plots of full {statistic} distribution",
+        "corr_title_template_est" : "Correlations of {estimator} of {statistic} ({experiment_name})",
+        "corr_title_template_boot" : "Correlations of bootstrapped (n={n_boot}) {statistic} ({experiment_name})",
+        "corr_title_template_all" : "Correlationns of full {statistic} distribution ({experiment_name})",
+        "box_title_template_est" : "Boxplots {indicator}({statistic}), {estimator}",
+        "box_title_template_boot" : "Boxplots {indicator}({statistic}), bootstrap n={n_boot}",
+        "box_title_template_all" : "Boxplots {indicator}({statistic}), full distribution",
+        "violin_title_template_est" : "Violinplot of {estimator} of {indicator} {statistic}",
+        "violin_title_template_boot" : "Violinplot of bootstrapped (n={n_boot}) {indicator} {statistic}",
+        "violin_title_template_all" : "Violinplot of full {indicator} {statistic} distribution",
+        "kde_title_template_est" : "KDEs {indicator}({statistic}), {estimator}",
+        "kde_title_template_boot" : "KDEs {indicator}({statistic}), bootstrap n={n_boot}",
+        "kde_title_template_all" : "KDEs {indicator}({statistic}), full distribution",
 
     }),
     "es" : KeyDict(dict, {
-        "archives_title_template" : "Mapa de características para {statistic} de {indicator} del experimento {experiment_name}",
-        "jointkde_title_template_est" : "KDEs conjuntas de {estimator} de {statistic} generacional",
-        "jointkde_title_template_boot" : "KDEs conjuntas de {statistic} generacional con bootstrap (n={n_boot}) ",
+        "archives_title_template" : "Mapa de características para {indicator} {statistic} del experimento {experiment_name}",
+        "jointkde_title_template_est" : "KDEs conjuntas de {statistic} {estimator}",
+        "jointkde_title_template_boot" : "KDEs conjuntas de {statistic} con bootstrap (n={n_boot}) ",
         "jointkde_title_template_all" : "KDEs conjuntas de la distribución completa de {statistic} generacional",
         "pairplot_title_template_est" : "Regresión/dispersión de {estimator} de {statistic} generacional",
         "pairplot_title_template_boot" : "Regresión/dispersión de {statistic} generacional con bootstrap (n={n_boot}) ",
@@ -326,7 +328,8 @@ LANG_DICTS = {
         "median" : "mediana",
         "Active Voxels" : "Voxeles activos",
         "Passive Voxels" : "Voxeles pasivos",
-        "Generation" : "Generación"
+        "Generation" : "Generación",
+        "Experiment" : "Experimento"
     })
 }
 
@@ -575,14 +578,14 @@ def IndicatorJointKdePlot(indicator1, indicator2, statistics, population_type, e
         ax.set_xlabel(compact_indicator1, fontsize = FIGURES_FONT_SIZE)
         ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
         ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
-        if estimator:
-            g.figure.suptitle(lang_dict["jointkde_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator]), y = 1., fontsize = FIGURES_FONT_SIZE)
-        elif bootsrapped_dist:
-            g.figure.suptitle(lang_dict["jointkde_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y = 1., fontsize = FIGURES_FONT_SIZE)
-        else:
-            g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1., fontsize = FIGURES_FONT_SIZE)
+        # if estimator:
+        #     g.figure.suptitle(lang_dict["jointkde_title_template_est"].format(statistic=lang_dict[statistic], estimator=lang_dict[estimator]), y = 1., fontsize = FIGURES_FONT_SIZE)
+        # elif bootsrapped_dist:
+        #     g.figure.suptitle(lang_dict["jointkde_title_template_boot"].format(statistic=lang_dict[statistic], n_boot=lang_dict[n_boot]), y = 1., fontsize = FIGURES_FONT_SIZE)
+        # else:
+        #     g.figure.suptitle(lang_dict["jointkde_title_template_all"].format(statistic=lang_dict[statistic]), y = 1., fontsize = FIGURES_FONT_SIZE)
         # Legend title
-        ax.get_legend().set_title('experimento')
+        ax.get_legend().set_title(lang_dict["Experiment"])
         ax.get_legend().get_title().set_fontsize(LEGENDS_FONT_SIZE)
         
         # Legend texts
@@ -947,8 +950,8 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             
             fig, ax = plt.subplots(ncols=1, sharey=True, figsize=(10,8))
             g = sns.boxplot(ax = ax, data=resulting_df, x = 'experiment', y=indicator_compact)
-            ax.set_ylabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
-            ax.set_xlabel('experimento', fontsize = FIGURES_FONT_SIZE)
+            ax.set_ylabel(f"{indicator_compact} ({lang_dict[statistic]})", fontsize = FIGURES_FONT_SIZE)
+            ax.set_xlabel(lang_dict["Experiment"], fontsize = FIGURES_FONT_SIZE)
             ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             if estimator:
@@ -1168,7 +1171,7 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             else:
                 g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE + 2)
             # Legend title
-            g.legend.set_title('experimento')
+            g.legend.set_title(lang_dict["Experiment"])
             g.legend.get_title().set_fontsize(LEGENDS_FONT_SIZE + 2)
 
             # Legend texts
