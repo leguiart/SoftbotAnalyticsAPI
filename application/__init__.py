@@ -25,10 +25,10 @@ class KeyDict(defaultdict):
     def __missing__(self, key):
         return key
 
-# FIGURES_FONT_SIZE = 25
-# LEGENDS_FONT_SIZE = 20
-FIGURES_FONT_SIZE = 'xx-large'
-LEGENDS_FONT_SIZE = 'large'
+FIGURES_FONT_SIZE = 25
+LEGENDS_FONT_SIZE = 20
+# FIGURES_FONT_SIZE = 'xx-large'
+# LEGENDS_FONT_SIZE = 'large'
 
 INDICATOR_STATS_SET = [
     "fitness",
