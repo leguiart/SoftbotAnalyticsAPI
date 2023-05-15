@@ -329,7 +329,8 @@ LANG_DICTS = {
         "Active Voxels" : "Voxeles activos",
         "Passive Voxels" : "Voxeles pasivos",
         "Generation" : "Generación",
-        "Experiment" : "Experimento"
+        "Experiment" : "Experimento",
+        "Density" : "Densidad"
     })
 }
 
