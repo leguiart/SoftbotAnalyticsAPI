@@ -193,12 +193,12 @@ INDICATORS_TO_COMPACT = KeyDict(dict,{
     "qd-score_anun": (to_math_tt, r'QD_{anun}'),
     "qd-score_anan": (to_math_tt, r'QD_{anan}'),
     "coverage": (to_math_cal, "C"),
-    "control_cppn_nodes": (to_math_rm, "C-CPPN_n"),
-    "control_cppn_edges": (to_math_rm, "C-CPPN_e"),
-    "control_cppn_ws": (to_math_rm, "C-CPPN_w"),
-    "morpho_cppn_nodes": (to_math_rm, "M-CPPN_n"),
-    "morpho_cppn_edges": (to_math_rm, "M-CPPN_e"),
-    "morpho_cppn_ws": (to_math_rm, "M-CPPN_w"),
+    "control_cppn_nodes": (to_math_rm, r'||CPPN_{c}.V||'),
+    "control_cppn_edges": (to_math_rm, r'||CPPN_{c}.E||'),
+    "control_cppn_ws": (to_math_rm, r'||CPPN_{c}.W||'),
+    "morpho_cppn_nodes": (to_math_rm, r'||CPPN_{m}.V||'),
+    "morpho_cppn_edges": (to_math_rm, r'||CPPN_{m}.E||'),
+    "morpho_cppn_ws": (to_math_rm, r'||CPPN_{m}.W||'),
     "simplified_gene_div": (to_math_it, r"D_{gs}"),
     "simplified_gene_ne_div": (to_math_it, r"D_{gne}"),
     "simplified_gene_nws_div": (to_math_it, r"D_{gnw}")
@@ -1161,10 +1161,10 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             resulting_df =  pd.concat(df_list, ignore_index=True)
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=9, aspect=1.2)
-            g.ax.set_ylabel(lang_dict["Density"], fontsize = FIGURES_FONT_SIZE)
-            g.ax.set_xlabel(f"{indicator_compact} ({lang_dict[statistic]})", fontsize = FIGURES_FONT_SIZE)
-            g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
-            g.ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
+            g.ax.set_ylabel(lang_dict["Density"], fontsize = FIGURES_FONT_SIZE + 5)
+            g.ax.set_xlabel(f"{indicator_compact} ({lang_dict[statistic]})", fontsize = FIGURES_FONT_SIZE + 5)
+            g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE + 5)
+            g.ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE + 5)
             # if estimator:
             #     g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
             # elif bootsrapped_dist:
@@ -1173,11 +1173,11 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             #     g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
             # Legend title
             g.legend.set_title(lang_dict["Experiment"])
-            g.legend.get_title().set_fontsize(LEGENDS_FONT_SIZE)
+            g.legend.get_title().set_fontsize(LEGENDS_FONT_SIZE + 5)
 
             # Legend texts
             for text in g.legend.texts:
-                text.set_fontsize(LEGENDS_FONT_SIZE)
+                text.set_fontsize(LEGENDS_FONT_SIZE + 5)
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(g)
             plt.close(g.figure)
     return dict_of_img_dicts
