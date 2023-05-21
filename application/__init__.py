@@ -481,10 +481,10 @@ def IndicatorBsConvergencePlots(indicators, statistics, population_type, experim
             ax.set_xlabel(lang_dict["Generation"], fontsize = FIGURES_FONT_SIZE)
             ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
-            if len(experiment_names) > 1:
-                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}", fontsize = FIGURES_FONT_SIZE)
-            else:
-                ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}", fontsize = FIGURES_FONT_SIZE)
+            # if len(experiment_names) > 1:
+            #     ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}", fontsize = FIGURES_FONT_SIZE)
+            # else:
+            #     ax.set_title(f"{indicator_compact} ({lang_dict[statistic]}), bootstrapping n={n_boot}, {experiment_names[0]}", fontsize = FIGURES_FONT_SIZE)
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
     return dict_of_img_dicts
@@ -955,12 +955,12 @@ def IndicatorBoxPlots(indicators, statistics, population_type, experiment_names,
             ax.set_xlabel(lang_dict["Experiment"], fontsize = FIGURES_FONT_SIZE)
             ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
-            if estimator:
-                ax.set_title(lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
-            elif bootsrapped_dist:
-                ax.set_title(lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE)
-            else:
-                ax.set_title(lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
+            # if estimator:
+            #     ax.set_title(lang_dict["box_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
+            # elif bootsrapped_dist:
+            #     ax.set_title(lang_dict["box_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE)
+            # else:
+            #     ax.set_title(lang_dict["box_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
 
             dict_of_img_dicts[indicator][statistic] = svg_from_fig(fig)
             plt.close(fig)
@@ -1162,15 +1162,15 @@ def IndicatorKdePlots(indicators, statistics, population_type, experiment_names,
             resulting_df[indicator_compact] = resulting_df[statistic].astype('float')
             g = sns.displot(data=resulting_df, x = indicator_compact, hue='experiment', kind="kde", fill = True, height=9, aspect=1.2)
             g.ax.set_ylabel(lang_dict["Density"], fontsize = FIGURES_FONT_SIZE)
-            g.ax.set_xlabel(indicator_compact, fontsize = FIGURES_FONT_SIZE)
+            g.ax.set_xlabel(f"{indicator_compact} ({lang_dict[statistic]})", fontsize = FIGURES_FONT_SIZE)
             g.ax.xaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
             g.ax.yaxis.set_tick_params(labelsize=FIGURES_FONT_SIZE)
-            if estimator:
-                g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
-            elif bootsrapped_dist:
-                g.ax.set_title(lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE)
-            else:
-                g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
+            # if estimator:
+            #     g.ax.set_title(lang_dict["kde_title_template_est"].format(statistic=lang_dict[statistic], indicator=indicator_compact, estimator=lang_dict[estimator]), fontsize = FIGURES_FONT_SIZE)
+            # elif bootsrapped_dist:
+            #     g.ax.set_title(lang_dict["kde_title_template_boot"].format(statistic=lang_dict[statistic], indicator=indicator_compact, n_boot=lang_dict[n_boot]), fontsize = FIGURES_FONT_SIZE)
+            # else:
+            #     g.ax.set_title(lang_dict["kde_title_template_all"].format(statistic=lang_dict[statistic], indicator=indicator_compact), fontsize = FIGURES_FONT_SIZE)
             # Legend title
             g.legend.set_title(lang_dict["Experiment"])
             g.legend.get_title().set_fontsize(LEGENDS_FONT_SIZE)
